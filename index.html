@@ -255,7 +255,7 @@ const PICKUPS = db.collection('pickups');
 // ── Constants ───────────────────────────────────────────────
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const GESTAO_PASS='F03573';
-const SUPER_OP='64';
+const SUPER_OP='00';
 const pad=n=>String(n).padStart(2,'0');
 const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
 const fmtDate=s=>{if(!s)return '';const[y,m,dv]=s.split('-');return `${dv}/${m}/${y}`;};
