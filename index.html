@@ -146,7 +146,7 @@
   <div class="modal">
     <h3>Apagar Registos Antigos</h3>
     <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Serao apagados <strong>permanentemente</strong> todos os pick-ups (incluindo anulados) com data superior a 6 meses.</p>
-    <label>Operador (**)</label><input id="purgeOp" type="number" placeholder="??">
+    <label>Operador (apenas no 64)</label><input id="purgeOp" type="number" placeholder="64">
     <div class="split">
       <button class="btn btn-danger" style="flex:1" onclick="confirmPurge()">Apagar do Firebase</button>
       <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalPurge')">Cancelar</button>
@@ -395,14 +395,32 @@ function printPickupSlips(doc){
 <html><head><meta charset="UTF-8">
 <style>
   @page{size:80mm auto;margin:1mm}
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:76mm}
-  .slip{width:76mm;padding:2mm 2mm 1mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
+  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
   .logo{text-align:center;font-size:11pt;font-weight:bold;letter-spacing:.5px;margin-bottom:.5mm}
   .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
   .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
   .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:70mm}
+  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
   hr{border:none;border-top:1px dashed #888;margin:2mm 0}
   .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
   .row b{font-weight:bold}
@@ -420,13 +438,17 @@ function printPickupSlips(doc){
   win.document.close();
 }
 
+function getOtherLocs(ptype,currentLabel){
+  const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
+  return all;
+}
 function buildSlipHTML(doc,label,bcDataURL){
-  const rxLine=doc.rx?`<div class="rx-alert">ATENCAO: Medicamentos Sujeitos a Receita Medica (RX)</div>`:'';
+  const others=getOtherLocs(doc.ptype,label).filter(l=>!l.includes('Duplicado'));
+  const locsNote=others.length>0?`<div class="locs-box"><div class="locs-title">Atencao: Este pickup tem mais localizacoes:</div>${others.map(l=>`<div>- ${l}</div>`).join('')}</div>`:'';
   return `<div class="slip">
   <div class="logo">FARMACIA DA LIGA</div>
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">${label}</div>
-  ${rxLine}
   <div class="codeline">${doc.code}</div>
   <img class="bcimg" src="${bcDataURL}" alt="barcode">
   <hr>
@@ -434,6 +456,7 @@ function buildSlipHTML(doc,label,bcDataURL){
   <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
   <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
   <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
+  ${locsNote}
   <hr>
   <div class="pago-section">
     <div class="pago-line"><div class="checkbox"></div><span>PAGO</span></div>
@@ -453,14 +476,23 @@ function printDeliverySlip(doc){
 <html><head><meta charset="UTF-8">
 <style>
   @page{size:80mm auto;margin:1mm}
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:76mm}
-  .slip{width:76mm;padding:2mm 2mm 1mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
+  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
   .logo{text-align:center;font-size:11pt;font-weight:bold;margin-bottom:.5mm}
   .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
   .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
   .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:70mm}
+  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
   hr{border:none;border-top:1px dashed #888;margin:2mm 0}
   .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
   .row b{font-weight:bold}
