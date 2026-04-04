@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <title>Pick-ups — Farmácia da Liga</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root{
+      --bg:#eef3ec;--card:#fff;--text:#152c1e;--muted:#5a7464;
+      --green:#1a5c38;--green2:#2a7d52;--green3:#3da06d;
+      --line:#d4e2d8;--shadow:0 8px 40px rgba(20,60,35,.10);
+      --radius:18px;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Montserrat,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{background:linear-gradient(135deg,#0d3522 0%,#1a5c38 55%,#2a7d52 100%);color:#fff;padding:0 28px;height:62px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 2px 20px rgba(0,0,0,.18)}
+    .logo{display:flex;align-items:center;gap:12px}.logo svg{width:32px;height:32px}
+    .logo h1{font-size:17px;font-weight:800;letter-spacing:-.2px}
+    .wrap{max-width:1400px;margin:0 auto;padding:22px 18px}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+    .tab{padding:11px 20px;border:none;border-radius:50px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;background:#fff;color:var(--muted);box-shadow:0 2px 8px rgba(0,0,0,.06);transition:.2s}
+    .tab:hover{background:#e8f0eb;color:var(--green)}
+    .tab.active{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;box-shadow:0 4px 18px rgba(26,92,56,.30)}
+    .section{display:none}.section.active{display:block}
+    .grid2{display:grid;grid-template-columns:1.1fr .9fr;gap:18px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+    @media(max-width:1000px){.grid2{grid-template-columns:1fr}.grid3{grid-template-columns:1fr 1fr}}
+    @media(max-width:600px){.grid3{grid-template-columns:1fr}}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px;border:1px solid var(--line)}
+    .card h2{font-size:16px;font-weight:800;margin-bottom:16px;color:var(--green)}
+    .card h3{font-size:14px;font-weight:700;margin-bottom:14px;color:var(--text)}
+    label{display:block;font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin:12px 0 5px;text-transform:uppercase}
+    input,select,textarea{width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid var(--line);font-family:inherit;font-size:13px;color:var(--text);background:#fff;transition:.2s;outline:none}
+    input:focus,select:focus,textarea:focus{border-color:var(--green2);box-shadow:0 0 0 3px rgba(42,125,82,.12)}
+    .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .btn{border:none;border-radius:12px;padding:12px 18px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.18s}
+    .btn-primary{background:linear-gradient(135deg,var(--green),var(--green2));color:#fff;box-shadow:0 4px 16px rgba(26,92,56,.25)}
+    .btn-primary:hover{filter:brightness(1.07)}
+    .btn-ghost{background:#eaf4ee;color:var(--green)}
+    .btn-ghost:hover{background:#d3eadb}
+    .btn-danger{background:#fde8e8;color:#b03030}
+    .btn-danger:hover{background:#fbd5d5}
+    .btn-sm{padding:8px 14px;font-size:12px;border-radius:10px}
+    .btn:disabled{opacity:.45;cursor:not-allowed;filter:none!important}
+    .split{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+    .pill{display:inline-flex;padding:5px 10px;border-radius:99px;font-size:11px;font-weight:700}
+    .pill-pend{background:#e8f0eb;color:#1a5c38}
+    .pill-pago{background:#fff4d9;color:#8a6000}
+    .pill-ent{background:#e6f6ec;color:#116b30}
+    .pill-anul{background:#fde8e8;color:#a33030}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+    @media(max-width:700px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+    .kpi{background:linear-gradient(180deg,#fff,#f7fbf7);border:1px solid var(--line);border-radius:16px;padding:16px}
+    .kpi-label{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:6px}
+    .kpi-val{font-size:26px;font-weight:800;color:var(--green)}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{padding:10px 8px;background:#f4f8f4;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:left;border-bottom:2px solid var(--line)}
+    td{padding:10px 8px;border-bottom:1px solid #edf2ee;vertical-align:middle}
+    tr:hover td{background:#f9fcf9}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px;align-items:flex-end}
+    .toolbar>div{flex:1;min-width:140px}
+    .msg{margin-top:10px;font-size:12px;font-weight:600;color:var(--green);padding:10px 14px;background:#e8f5ed;border-radius:10px}
+    .msg.err{background:#fde8e8;color:#b03030}
+    .divider{height:1px;background:var(--line);margin:16px 0}
+    /* modal */
+    .overlay{position:fixed;inset:0;background:rgba(15,35,20,.45);z-index:200;display:none;align-items:center;justify-content:center}
+    .overlay.open{display:flex}
+    .modal{background:#fff;border-radius:22px;padding:28px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.22)}
+    .modal h3{font-size:16px;font-weight:800;margin-bottom:14px}
+    /* pickup list items */
+    .pu-item{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+    .pu-code{font-size:15px;font-weight:800;color:var(--green)}
+    .pu-meta{font-size:11px;color:var(--muted);margin-top:2px}
+    /* print styles */
+    @media print{body{background:#fff}header,.tabs,.toolbar,.split,.btn,th,td button,#gestaoSection .toolbar,#gestaoSection .split{display:none!important}.card{box-shadow:none!important;border:none!important}}
+    /* lock overlay */
+    #lockOverlay{position:fixed;inset:0;background:linear-gradient(135deg,#0d3522,#1a5c38);z-index:999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px}
+    #lockOverlay .lock-card{background:#fff;border-radius:22px;padding:32px 28px;min-width:320px;text-align:center}
+    #lockOverlay h2{font-size:18px;font-weight:800;color:var(--green);margin-bottom:6px}
+    #lockOverlay p{font-size:12px;color:var(--muted);margin-bottom:18px}
+  </style>
+</head>
+<body>
+
+<!-- LOCK OVERLAY for Gestão tab -->
+<div id="lockOverlay" style="display:none">
+  <div class="lock-card">
+    <h2>Acesso Restrito</h2>
+    <p>Introduza a palavra-passe para aceder à Gestão de Pick-ups</p>
+    <input type="password" id="lockInput" placeholder="Palavra-passe" style="margin-bottom:12px">
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary" style="flex:1" onclick="checkLock()">Entrar</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeLock()">Cancelar</button>
+    </div>
+    <div id="lockErr" style="color:#b03030;font-size:12px;margin-top:10px;display:none">Palavra-passe incorreta.</div>
+  </div>
+</div>
+
+<!-- MODAL: Pagamento -->
+<div class="overlay" id="modalPagamento">
+  <div class="modal">
+    <h3>Registar Pagamento</h3>
+    <label>Operador (número)</label><input id="payOp" type="number" placeholder="Nº do colaborador">
+    <label>Método de Pagamento</label>
+    <select id="payMethod">
+      <option value="">Selecionar método</option>
+      <option>Numerário</option><option>Numerário (caixa automática)</option><option>MBway</option><option>Finanfarma</option><option>Crédito</option><option>Outros</option>
+    </select>
+    <div class="split">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmPayment()">Confirmar</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalPagamento')">Cancelar</button>
+    </div>
+    <div id="payMsg"></div>
+  </div>
+</div>
+
+<!-- MODAL: Anulação -->
+<div class="overlay" id="modalAnular">
+  <div class="modal">
+    <h3>Anular Pick-up</h3>
+    <label>Nº Colaborador</label><input id="anulOp" type="number">
+    <label>Justificação</label><textarea id="anulJust" rows="3" placeholder="Obrigatório — motivo da anulação"></textarea>
+    <div class="split">
+      <button class="btn btn-danger" style="flex:1" onclick="confirmAnular()">Anular</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalAnular')">Cancelar</button>
+    </div>
+    <div id="anulMsg"></div>
+  </div>
+</div>
+
+<!-- MODAL: Pesquisa por código -->
+<div class="overlay" id="modalSearch">
+  <div class="modal">
+    <h3>Pesquisar por código</h3>
+    <input id="searchCodeInput" type="text" placeholder="Leia o código de barras ou escreva">
+    <div id="searchResult" style="margin-top:14px;font-size:13px;min-height:30px"></div>
+    <div class="split"><button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalSearch')">Fechar</button></div>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="rgba(255,255,255,.13)"/><path d="M16 6v20M6 16h20" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
+    <h1>Farmácia da Liga — Gestão de Pick-ups</h1>
+  </div>
+  <span style="font-size:12px;opacity:.7" id="headerDate"></span>
+</header>
+
+<div class="wrap">
+  <div class="tabs">
+    <button class="tab active" data-tab="criar">Criação</button>
+    <button class="tab" data-tab="dispensa">Dispensa</button>
+    <button class="tab" data-tab="gestao" id="tabGestao">Gestão</button>
+  </div>
+
+  <!-- ═══════════════════════════════ CRIAÇÃO ═══════════════════════════════ -->
+  <div id="criar" class="section active">
+    <div class="grid2">
+      <div class="card">
+        <h2>Novo Pick-up</h2>
+        <div class="row3">
+          <div><label>Operador (nº)</label><input id="c_op" type="number" placeholder="ex: 64"></div>
+          <div><label>Data</label><input id="c_date" type="date"></div>
+          <div><label>Valor (€)</label><input id="c_value" type="number" step="0.01" placeholder="0.00"></div>
+        </div>
+        <label>Tipo de Produtos</label>
+        <select id="c_type">
+          <option value="AMB">Temperatura Ambiente</option>
+          <option value="FR">Frio</option>
+          <option value="PSI">Psicotrópicos</option>
+          <option value="FR_PSI">Frio + Psicotrópicos</option>
+          <option value="AMB_FR">Temperatura Ambiente + Frio</option>
+        </select>
+        <div class="split">
+          <button class="btn btn-primary" id="btnCreate">Criar Pick-up</button>
+        </div>
+        <div id="createMsg" style="display:none;margin-top:10px"></div>
+      </div>
+      <div class="card" id="previewCard">
+        <h2>Pick-up criado</h2>
+        <div id="previewContent" style="color:var(--muted);font-size:13px">Ainda sem pick-up criado.</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>Pick-ups Pendentes / Por Entregar</h3>
+      <div id="pendingList"><div style="color:var(--muted);font-size:13px">A carregar...</div></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ DISPENSA ═══════════════════════════════ -->
+  <div id="dispensa" class="section">
+    <div class="grid2">
+      <div class="card">
+        <h2>Dispensa de Pick-up</h2>
+        <label>Operador que dispensa (nº)</label><input id="d_op" type="number" placeholder="ex: 12">
+        <label>Código do Pick-up</label>
+        <input id="d_code" type="text" placeholder="Leia o código de barras ou escreva" oninput="this.value=this.value.toUpperCase()">
+        <div class="split">
+          <button class="btn btn-primary" id="btnDispense">Registar Dispensa</button>
+          <button class="btn btn-ghost" id="btnRePrint" disabled>Reimprimir Talão</button>
+        </div>
+        <div id="dispMsg" style="display:none;margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>Últimos 20 Entregues</h3>
+        <div id="lastDelivered"><div style="color:var(--muted);font-size:13px">A carregar...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════ GESTÃO ═══════════════════════════════ -->
+  <div id="gestao" class="section" id="gestaoSection">
+    <div class="card">
+      <div class="toolbar">
+        <div><label>Data início</label><input id="f_start" type="date"></div>
+        <div><label>Data fim</label><input id="f_end" type="date"></div>
+        <div><label>Código</label><input id="f_code" type="text"></div>
+        <div><label>Colaborador</label><input id="f_op" type="text"></div>
+        <div><label>Estado</label>
+          <select id="f_state">
+            <option value="">Todos</option>
+            <option>Pendente</option><option>Pago</option><option>Entregue</option><option>Anulado</option>
+          </select>
+        </div>
+        <div><label>Valor €</label><input id="f_value" type="number"></div>
+        <div><button class="btn btn-primary" id="btnFilter" style="margin-top:18px;width:100%">Filtrar</button></div>
+        <div><button class="btn btn-ghost" id="btnExport" style="margin-top:18px;width:100%">Exportar XLS</button></div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-label">Não pagos</div><div class="kpi-val" id="k1">—</div></div>
+        <div class="kpi"><div class="kpi-label">Não entregues</div><div class="kpi-val" id="k2">—</div></div>
+        <div class="kpi"><div class="kpi-label">Operadores c/ não pagos</div><div class="kpi-val" id="k3">—</div></div>
+        <div class="kpi"><div class="kpi-label">Total registos</div><div class="kpi-val" id="k4">—</div></div>
+      </div>
+      <div style="overflow:auto">
+        <table id="mainTable">
+          <thead><tr><th>Código</th><th>Operador</th><th>Data</th><th>Valor</th><th>Tipo</th><th>Estado</th><th>Criado em</th><th>Ações</th></tr></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h3>Pick-ups Anulados</h3>
+      <div id="canceledList"><div style="color:var(--muted);font-size:13px">Sem anulações.</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Firebase init ────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyB1H6Da_3tPxEgtoT1RZgVWNTPBYVGdvTw",
+  authDomain: "fliga-pickup.firebaseapp.com",
+  projectId: "fliga-pickup",
+  storageBucket: "fliga-pickup.firebasestorage.app",
+  messagingSenderId: "1094174720125",
+  appId: "1:1094174720125:web:582673afdb3d72554eb114"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const PICKUPS = db.collection('pickups');
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const ALPHA = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const pad = n => String(n).padStart(2,'0');
+const todayISO = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const fmtDate = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}/${m}/${y}`; };
+const shortDate = s => { if(!s) return ''; const [y,m,d]=s.split('-'); return `${d}${m}`; };
+const GESTAO_PASS = 'F03573';
+const SUPER_OP = '64';
+let gestaoUnlocked = false;
+let currentPayCode = null;
+let currentAnulCode = null;
+let lastCreated = null;
+let lastDispensed = null;
+
+document.getElementById('headerDate').textContent = new Date().toLocaleString('pt-PT');
+document.getElementById('c_date').value = todayISO();
+
+// ── Count pickups for operator+day from Firestore ────────────────────────────
+async function countForOpDay(op, date) {
+  const snap = await PICKUPS
+    .where('op','==', String(op))
+    .where('date','==', date)
+    .where('canceled','==', false)
+    .get();
+  return snap.size + 1;
+}
+
+// ── Build pick-up code ────────────────────────────────────────────────────────
+function buildCode(op, count, date, ptype) {
+  const letter = ALPHA[(count-1) % 26] || String(count);
+  const d = shortDate(date);
+  let mid = letter;
+  if (ptype.includes('FR'))  mid += 'FR';
+  if (ptype.includes('PSI')) mid += 'PSI';
+  return `${op}${mid}${d}`;
+}
+
+// ── Create Pickup ─────────────────────────────────────────────────────────────
+document.getElementById('btnCreate').onclick = async () => {
+  const op    = document.getElementById('c_op').value.trim();
+  const date  = document.getElementById('c_date').value || todayISO();
+  const value = parseFloat(document.getElementById('c_value').value) || 0;
+  const ptype = document.getElementById('c_type').value;
+  if (!op) return showMsg('createMsg','Indique o operador.','err');
+  if (!date) return showMsg('createMsg','Indique a data.','err');
+  document.getElementById('btnCreate').disabled = true;
+  try {
+    const count = await countForOpDay(op, date);
+    const code  = buildCode(op, count, date, ptype);
+    const doc = {
+      op: String(op), date, value, ptype, code, count,
+      status: 'Pendente', paid: false, canceled: false, delivered: false,
+      payMethod: null, payOp: null, payAt: null,
+      deliveredBy: null, deliveredAt: null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    await PICKUPS.doc(code).set(doc);
+    lastCreated = doc;
+    showMsg('createMsg', `✔ Pick-up criado: <strong>${code}</strong>`, 'ok');
+    renderPreview(doc);
+    loadAll();
+  } catch(e) { showMsg('createMsg', 'Erro: ' + e.message, 'err'); }
+  document.getElementById('btnCreate').disabled = false;
+};
+
+// ── Preview & Print Buttons ───────────────────────────────────────────────────
+function renderPreview(doc) {
+  const el = document.getElementById('previewContent');
+  el.innerHTML = `
+    <div style="margin-bottom:12px">
+      <div style="font-size:24px;font-weight:800;color:var(--green)">${doc.code}</div>
+      <div style="font-size:12px;color:var(--muted)">Op. ${doc.op} · ${fmtDate(doc.date)} · ${parseFloat(doc.value).toFixed(2)} € · ${doc.ptype}</div>
+    </div>
+    <svg id="prevBarcode" style="width:100%;max-width:280px"></svg>
+    <div class="split" style="margin-top:14px">
+      <button class="btn btn-primary" onclick="printPickupSlips(window._lastCreated)">Imprimir Talões</button>
+    </div>`;
+  window._lastCreated = doc;
+  JsBarcode(document.getElementById('prevBarcode'), doc.code, {format:'CODE128',displayValue:true,font:'Montserrat',width:2,height:45});
+}
+
+// ── Print Pickup Slips ────────────────────────────────────────────────────────
+function printPickupSlips(doc) {
+  const receipts = getReceiptTypes(doc.ptype, doc.value);
+  const w = window.open('','_blank','width=600,height:800');
+  const slips = receipts.map(r => slipHTML(doc, r)).join('');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+    <style>
+      *{box-sizing:border-box;margin:0;padding:0}body{font-family:Montserrat,sans-serif;background:#fff}
+      .slip{width:80mm;border:1px dashed #9db3a4;padding:12px;margin:0 0 12px;page-break-after:always}
+      .slip-title{font-size:13px;font-weight:800;margin-bottom:4px}
+      .slip-code{font-size:18px;font-weight:800;color:#1a5c38;margin-bottom:6px}
+      .meta{font-size:11px;margin-bottom:2px}svg{width:100%;height:55px;margin:8px 0}
+      .divider{border-top:1px dashed #999;margin:10px 0}
+      .footer{font-size:9px;line-height:1.4;color:#555;margin-top:4px}
+      .sig-line{border-bottom:1px solid #000;height:22px;margin:8px 0 4px}
+      .sig-label{font-size:10px;color:#666}
+      .pago-box{display:flex;align-items:center;gap:8px;margin:8px 0}
+      .pago-check{width:16px;height:16px;border:1.5px solid #000;display:inline-block}
+      .pago-label{font-size:12px;font-weight:700}
+      .pay-method{font-size:11px;margin-top:6px;border:1px solid #ccc;padding:5px;min-height:28px}
+    </style>
+  </head><body>${slips}
+  <script>
+    document.querySelectorAll('svg.bc').forEach(s=>JsBarcode(s, s.dataset.code,{format:'CODE128',displayValue:true,width:2,height:45,font:'Montserrat'}));
+    window.onload=()=>setTimeout(()=>window.print(),600);
+  <\/script></body></html>`);
+  w.document.close();
+}
+
+function slipHTML(doc, label) {
+  return `<div class="slip">
+    <div class="slip-title">Farmácia da Liga — Pick-up</div>
+    <div style="font-size:11px;color:#666;margin-bottom:6px">${label}</div>
+    <div class="slip-code">${doc.code}</div>
+    <svg class="bc" data-code="${doc.code}"></svg>
+    <div class="meta">Operador: ${doc.op}</div>
+    <div class="meta">Data: ${fmtDate(doc.date)}</div>
+    <div class="meta">Valor: ${parseFloat(doc.value).toFixed(2)} €</div>
+    <div class="meta">Tipo: ${doc.ptype}</div>
+    <div class="divider"></div>
+    <div class="pago-box"><div class="pago-check"></div><div class="pago-label">PAGO</div></div>
+    <div class="pay-method">Método de pagamento: ________________________</div>
+    <div class="footer">O pick-up só será considerado PAGO após junção de comprovativo de pagamento. Se numerário ou caixa automática, sinalizar (colocar espaço).</div>
+    <div class="divider"></div>
+    <div class="sig-label">Data de Entrega:</div><div class="sig-line"></div>
+    <div class="sig-label">Assinatura do Cliente:</div><div class="sig-line"></div>
+  </div>`;
+}
+
+function getReceiptTypes(ptype, value) {
+  switch(ptype) {
+    case 'AMB':    return ['Talão — Temperatura Ambiente', 'Duplicado — Temperatura Ambiente'];
+    case 'FR':     return ['Talão — Frio', 'Duplicado — Frio'];
+    case 'PSI':    return ['Talão — Psicotrópicos', 'Duplicado — Psicotrópicos'];
+    case 'FR_PSI': return ['Frio (Tem produtos de Frio)', 'Psicotrópicos (Tem produtos de Frio)'];
+    case 'AMB_FR': return ['Talão — Temperatura Ambiente', 'Frio (Tem produtos Amb. no Pick-up)', 'Pick-up: Tem produtos de FRIO'];
+    default:       return ['Talão de Pick-up', 'Duplicado'];
+  }
+}
+
+// ── Dispense ──────────────────────────────────────────────────────────────────
+document.getElementById('btnDispense').onclick = async () => {
+  const op   = document.getElementById('d_op').value.trim();
+  const code = document.getElementById('d_code').value.trim().toUpperCase();
+  if (!op || !code) return showMsg('dispMsg','Preencha operador e código.','err');
+  const snap = await PICKUPS.doc(code).get();
+  if (!snap.exists) return showMsg('dispMsg','Código não encontrado.','err');
+  const data = snap.data();
+  if (data.canceled)   return showMsg('dispMsg','Pick-up anulado — não pode ser dispensado.','err');
+  if (data.delivered)  return showMsg('dispMsg','Pick-up já foi dispensado anteriormente.','err');
+  if (!data.paid)      return showMsg('dispMsg','Pick-up não está PAGO. Registe primeiro o pagamento.','err');
+  await PICKUPS.doc(code).update({
+    status:'Entregue', delivered:true,
+    deliveredBy: String(op),
+    deliveredAt: new Date().toISOString()
+  });
+  lastDispensed = {...data, deliveredBy:op, deliveredAt: new Date().toISOString()};
+  showMsg('dispMsg', `✔ Dispensado com sucesso: <strong>${code}</strong>`, 'ok');
+  document.getElementById('btnRePrint').disabled = false;
+  printDeliverySlip(lastDispensed);
+  loadAll();
+};
+
+document.getElementById('btnRePrint').onclick = () => { if(lastDispensed) printDeliverySlip(lastDispensed); };
+
+function printDeliverySlip(doc) {
+  const w = window.open('','_blank','width=500,height:600');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
+    <style>body{font-family:Montserrat,sans-serif}
+    .slip{width:80mm;border:1px dashed #999;padding:12px}
+    .slip-title{font-size:13px;font-weight:800}.slip-code{font-size:20px;font-weight:800;color:#1a5c38;margin:4px 0}
+    .meta{font-size:11px;margin:2px 0}svg{width:100%;height:55px;margin:8px 0}
+    .divider{border-top:1px dashed #aaa;margin:8px 0}
+    </style>
+  </head><body>
+    <div class="slip">
+      <div class="slip-title">Farmácia da Liga — Comprovativo de Dispensa</div>
+      <div class="slip-code">${doc.code}</div>
+      <svg id="bc"></svg>
+      <div class="meta">Operador de Dispensa: ${doc.deliveredBy}</div>
+      <div class="meta">Data/Hora: ${new Date(doc.deliveredAt).toLocaleString('pt-PT')}</div>
+      <div class="divider"></div>
+      <div class="meta">Operador criação: ${doc.op}</div>
+      <div class="meta">Tipo: ${doc.ptype}</div>
+      <div class="meta">Valor: ${parseFloat(doc.value).toFixed(2)} €</div>
+    </div>
+    <script>JsBarcode(document.getElementById('bc'),'${doc.code}',{format:'CODE128',displayValue:true,width:2,height:45,font:'Montserrat'});
+    window.onload=()=>setTimeout(()=>window.print(),500);<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+// ── Mark as Paid (from list) ──────────────────────────────────────────────────
+window.openPayModal = (code) => { currentPayCode = code; openModal('modalPagamento'); };
+
+async function confirmPayment() {
+  const op     = document.getElementById('payOp').value.trim();
+  const method = document.getElementById('payMethod').value;
+  if (!op || !method) { document.getElementById('payMsg').textContent='Preencha todos os campos.'; return; }
+  await PICKUPS.doc(currentPayCode).update({
+    paid: true, status: 'Pago',
+    payOp: String(op), payMethod: method,
+    payAt: new Date().toISOString()
+  });
+  closeModal('modalPagamento');
+  loadAll();
+}
+
+// ── Anular ────────────────────────────────────────────────────────────────────
+window.openAnulModal = (code) => { currentAnulCode = code; document.getElementById('anulMsg').textContent=''; openModal('modalAnular'); };
+
+async function confirmAnular() {
+  const op   = document.getElementById('anulOp').value.trim();
+  const just = document.getElementById('anulJust').value.trim();
+  if (!op) { document.getElementById('anulMsg').textContent='Indique o colaborador.'; return; }
+  // Collaborator 64 can cancel any without justification required; others must justify
+  if (String(op) !== SUPER_OP && !just) {
+    document.getElementById('anulMsg').textContent='Justificação obrigatória.'; return;
+  }
+  const snap = await PICKUPS.doc(currentAnulCode).get();
+  if (!snap.exists) return;
+  const data = snap.data();
+  // Others can only cancel own pickups
+  if (String(op) !== SUPER_OP && String(data.op) !== String(op)) {
+    document.getElementById('anulMsg').textContent='Apenas o operador criador pode anular (exceto op. 64).'; return;
+  }
+  await PICKUPS.doc(currentAnulCode).update({
+    status:'Anulado', canceled:true,
+    canceledBy: String(op),
+    cancelJust: just || '(Colaborador 64 — sem justificação obrigatória)',
+    canceledAt: new Date().toISOString()
+  });
+  closeModal('modalAnular');
+  loadAll();
+}
+
+// ── Load & Render ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  const snap = await PICKUPS.orderBy('createdAt','desc').get();
+  const all = snap.docs.map(d => ({...d.data(), _id: d.id}));
+  renderPending(all);
+  renderLastDelivered(all);
+  if (gestaoUnlocked) renderGestao(all);
+}
+
+function renderPending(all) {
+  const pending = all.filter(x => !x.delivered && !x.canceled);
+  const el = document.getElementById('pendingList');
+  if (!pending.length) { el.innerHTML='<div style="color:var(--muted);font-size:13px">Sem pick-ups pendentes.</div>'; return; }
+  el.innerHTML = pending.map(x => `
+    <div class="pu-item">
+      <div>
+        <div class="pu-code">${x.code}</div>
+        <div class="pu-meta">Op. ${x.op} · ${fmtDate(x.date)} · ${parseFloat(x.value).toFixed(2)} € · ${x.ptype}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${statePill(x.status)}
+        ${!x.paid ? `<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Registar Pagamento</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="printPickupSlips(${JSON.stringify(x).replace(/"/g,'&quot;')})">Reimprimir</button>
+        <button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>
+      </div>
+    </div>`).join('');
+}
+
+function renderLastDelivered(all) {
+  const del = all.filter(x => x.delivered).slice(0,20);
+  const el = document.getElementById('lastDelivered');
+  if (!del.length) { el.innerHTML='<div style="color:var(--muted);font-size:13px">Sem entregues.</div>'; return; }
+  el.innerHTML = del.map(x => `
+    <div class="pu-item">
+      <div>
+        <div class="pu-code">${x.code}</div>
+        <div class="pu-meta">Op. ${x.op} · ${fmtDate(x.date)} · Entregue por ${x.deliveredBy||'—'}</div>
+      </div>
+      <span class="pill pill-ent">Entregue</span>
+    </div>`).join('');
+}
+
+function renderGestao(all) {
+  const filtered = applyFilters(all);
+  const unpaid = filtered.filter(x => !x.paid && !x.canceled);
+  const undel  = filtered.filter(x => !x.delivered && !x.canceled);
+  const opUnpaid = new Set(unpaid.map(x => x.op)).size;
+  document.getElementById('k1').textContent = unpaid.length;
+  document.getElementById('k2').textContent = undel.length;
+  document.getElementById('k3').textContent = opUnpaid;
+  document.getElementById('k4').textContent = filtered.length;
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = filtered.map(x => `<tr>
+    <td><strong>${x.code}</strong></td>
+    <td>${x.op}</td>
+    <td>${fmtDate(x.date)}</td>
+    <td>${parseFloat(x.value).toFixed(2)} €</td>
+    <td style="font-size:11px">${x.ptype}</td>
+    <td>${statePill(x.status)}</td>
+    <td style="font-size:11px">${x.createdAt?.toDate ? x.createdAt.toDate().toLocaleString('pt-PT') : '—'}</td>
+    <td>
+      ${!x.paid && !x.canceled ? `<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagar</button> ` : ''}
+      ${!x.canceled ? `<button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>` : ''}
+    </td>
+  </tr>`).join('') || '<tr><td colspan="8" style="color:var(--muted)">Sem resultados</td></tr>';
+  // Canceled list
+  const canceled = all.filter(x => x.canceled);
+  document.getElementById('canceledList').innerHTML = canceled.length
+    ? canceled.map(x => `<div class="pu-item">
+        <div>
+          <div class="pu-code">${x.code}</div>
+          <div class="pu-meta">Op. ${x.op} · ${fmtDate(x.date)} · Anulado por: ${x.canceledBy||'—'}</div>
+          <div class="pu-meta" style="color:#b03030">Motivo: ${x.cancelJust||'—'}</div>
+        </div>
+        <span class="pill pill-anul">Anulado</span>
+      </div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px">Sem anulações.</div>';
+  window._filteredData = filtered;
+}
+
+function applyFilters(all) {
+  const fs = document.getElementById('f_start').value;
+  const fe = document.getElementById('f_end').value;
+  const code = document.getElementById('f_code').value.trim().toUpperCase();
+  const op   = document.getElementById('f_op').value.trim();
+  const st   = document.getElementById('f_state').value;
+  const val  = document.getElementById('f_value').value;
+  return all.filter(x =>
+    (!fs || x.date >= fs) &&
+    (!fe || x.date <= fe) &&
+    (!code || x.code.includes(code)) &&
+    (!op   || String(x.op).includes(op)) &&
+    (!st   || x.status === st) &&
+    (!val  || parseFloat(x.value) === parseFloat(val))
+  );
+}
+
+// ── Export XLS ────────────────────────────────────────────────────────────────
+document.getElementById('btnExport').onclick = () => {
+  const data = (window._filteredData || []).map(x => ({
+    Código: x.code, Operador: x.op, Data: fmtDate(x.date),
+    'Valor (€)': parseFloat(x.value).toFixed(2), Tipo: x.ptype,
+    Estado: x.status, Pago: x.paid ? 'Sim' : 'Não',
+    'Método Pagamento': x.payMethod||'—', 'Op. Pagamento': x.payOp||'—',
+    'Op. Dispensa': x.deliveredBy||'—', 'Data Dispensa': x.deliveredAt||'—',
+    'Motivo Anulação': x.cancelJust||'—'
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Pickups');
+  XLSX.writeFile(wb, `pickups_farmacia_liga_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+function statePill(s) {
+  const map = {Pendente:'pill-pend',Pago:'pill-pago',Entregue:'pill-ent',Anulado:'pill-anul'};
+  return `<span class="pill ${map[s]||'pill-pend'}">${s}</span>`;
+}
+
+// ── Lock / Tabs ───────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.onclick = () => {
+    const tab = btn.dataset.tab;
+    if (tab === 'gestao' && !gestaoUnlocked) {
+      document.getElementById('lockOverlay').style.display='flex';
+      return;
+    }
+    switchTab(tab);
+  };
+});
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id===tab));
+}
+
+function checkLock() {
+  const val = document.getElementById('lockInput').value;
+  if (val === GESTAO_PASS) {
+    gestaoUnlocked = true;
+    document.getElementById('lockOverlay').style.display='none';
+    document.getElementById('lockInput').value='';
+    switchTab('gestao');
+    loadAll();
+  } else {
+    document.getElementById('lockErr').style.display='block';
+  }
+}
+
+function closeLock() {
+  document.getElementById('lockOverlay').style.display='none';
+  document.getElementById('lockInput').value='';
+  document.getElementById('lockErr').style.display='none';
+}
+
+// ── Msg helper ────────────────────────────────────────────────────────────────
+function showMsg(id, html, type) {
+  const el = document.getElementById(id);
+  el.style.display='block';
+  el.className = type==='err' ? 'msg err' : 'msg';
+  el.innerHTML = html;
+}
+
+document.getElementById('btnFilter').onclick = loadAll;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
