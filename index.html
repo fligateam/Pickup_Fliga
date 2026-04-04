@@ -324,7 +324,8 @@ document.getElementById('btnCreate').onclick=async()=>{
   const date=document.getElementById('c_date').value||todayISO();
   const value=parseFloat(document.getElementById('c_value').value)||0;
   const ptype=document.getElementById('c_type').value;
-  const rx=document.getElementById('c_rx').checked;
+  const rxCheck=document.getElementById('c_rx').checked;
+    const rx=rxCheck||ptype.includes('PSI');
   if(!op)return showMsg('createMsg','Indique o operador.','err');
   document.getElementById('btnCreate').disabled=true;
   try{
@@ -394,44 +395,26 @@ function printPickupSlips(doc){
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
-  @page{size:80mm auto;margin:1mm}
-.codeline{font-size:13pt}
-.row{font-size:7.5pt;margin-bottom:.6mm}
-.title{font-size:8.5pt;padding:1.2mm}
-.logo{font-size:10pt}
-.sub{font-size:7pt}
-.footer-note{font-size:6pt;line-height:1.2}
-.pay-method-label{font-size:7pt}
-.sig-label{font-size:7.5pt}
-
-.codeline{font-size:13pt}
-.row{font-size:7.5pt;margin-bottom:.6mm}
-.title{font-size:8.5pt;padding:1.2mm}
-.logo{font-size:10pt}
-.sub{font-size:7pt}
-.footer-note{font-size:6pt;line-height:1.2}
-.pay-method-label{font-size:7pt}
-.sig-label{font-size:7.5pt}
-
+  @page{size:80mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
-  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
-  .logo{text-align:center;font-size:11pt;font-weight:bold;letter-spacing:.5px;margin-bottom:.5mm}
-  .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
-  .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
-  .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
-  hr{border:none;border-top:1px dashed #888;margin:2mm 0}
-  .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:72mm}
+  .slip{width:72mm;padding:1.5mm 1.5mm 1mm;break-after:auto;page-break-after:auto}
+  .logo{text-align:center;font-size:10pt;font-weight:bold;letter-spacing:.3px;margin-bottom:.3mm}
+  .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
+  .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
+  .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
+  .bcimg{display:block;margin:0 auto 1mm;width:64mm;max-width:64mm}
+  hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
+  .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
-  .pago-section{border:1px solid #000;padding:1.5mm;margin:2mm 0}
-  .pago-line{display:flex;align-items:center;gap:3mm;font-size:11pt;font-weight:bold;margin-bottom:1.5mm}
-  .checkbox{width:6mm;height:6mm;border:1.5px solid #000;display:inline-block;flex-shrink:0}
-  .pay-method-label{font-size:7.5pt;font-weight:bold;margin-bottom:.8mm}
-  .pay-method-box{border:1px solid #000;height:7mm;width:100%}
-  .footer-note{font-size:6.5pt;line-height:1.25;text-align:center;color:#333;margin:1.5mm 0}
-  .rx-alert{text-align:center;font-size:8pt;font-weight:bold;border:1.5px solid #000;padding:1.5mm;margin-bottom:1.5mm}
-</style>
+  .pago-section{border:1px solid #000;padding:1mm;margin:1.5mm 0}
+  .pago-line{display:flex;align-items:center;gap:2mm;font-size:10pt;font-weight:bold;margin-bottom:1mm}
+  .checkbox{width:5.5mm;height:5.5mm;border:1.5px solid #000;display:inline-block;flex-shrink:0}
+  .pay-method-label{font-size:7pt;font-weight:bold;margin-bottom:.5mm}
+  .pay-method-box{border:1px solid #000;height:6mm;width:100%}
+  .footer-note{font-size:6pt;line-height:1.2;text-align:center;color:#333;margin:1mm 0}
+  .locs-box{border:1px dashed #555;padding:1mm;margin:1mm 0;font-size:7pt}
+  .locs-title{font-weight:bold;margin-bottom:.3mm;font-size:7pt}</style>
 </head><body>${slips}
 <script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
 </body></html>`);
@@ -475,31 +458,21 @@ function printDeliverySlip(doc){
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
-  @page{size:80mm auto;margin:1mm}
-.codeline{font-size:13pt}
-.row{font-size:7.5pt;margin-bottom:.6mm}
-.title{font-size:8.5pt;padding:1.2mm}
-.logo{font-size:10pt}
-.sub{font-size:7pt}
-.footer-note{font-size:6pt;line-height:1.2}
-.pay-method-label{font-size:7pt}
-.sig-label{font-size:7.5pt}
-
+  @page{size:80mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
-  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
-  .logo{text-align:center;font-size:11pt;font-weight:bold;margin-bottom:.5mm}
-  .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
-  .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
-  .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
-  hr{border:none;border-top:1px dashed #888;margin:2mm 0}
-  .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:72mm}
+  .slip{width:72mm;padding:1.5mm 1.5mm 1mm}
+  .logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:.3mm}
+  .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
+  .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
+  .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
+  .bcimg{display:block;margin:0 auto 1mm;width:64mm}
+  hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
+  .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
-  .stamp{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:2px;border:2px solid #000;padding:2.5mm;margin:3mm 0}
-  .sig-label{font-size:8pt;margin-bottom:1mm}
-  .sig-line{border-bottom:1px solid #000;height:5mm;margin-bottom:2mm}
-</style>
+  .stamp{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:1.5px;border:2px solid #000;padding:2mm;margin:2mm 0}
+  .sig-label{font-size:7.5pt;margin-bottom:.8mm}
+  .sig-line{border-bottom:1px solid #000;height:5mm;margin-bottom:1.5mm}</style>
 </head><body>
 <div class="slip">
   <div class="logo">FARMACIA DA LIGA</div>
