@@ -262,7 +262,7 @@
           <thead><tr>
             <th>Codigo</th><th>Criado por</th><th>Data Criacao</th>
             <th>Valor</th><th>Tipo</th><th>RX</th><th>Estado</th>
-            <th>Pago por</th><th>Data Pag.</th>
+            <th>Pago por</th><th>Metodo Pag.</th>
             <th>Entregue por</th><th>Data Entrega</th>
             <th>Acoes</th>
           </tr></thead>
@@ -395,14 +395,32 @@ function printPickupSlips(doc){
 <html><head><meta charset="UTF-8">
 <style>
   @page{size:80mm auto;margin:1mm}
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:76mm}
-  .slip{width:76mm;padding:2mm 2mm 1mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
+  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
   .logo{text-align:center;font-size:11pt;font-weight:bold;letter-spacing:.5px;margin-bottom:.5mm}
   .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
   .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
   .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:70mm}
+  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
   hr{border:none;border-top:1px dashed #888;margin:2mm 0}
   .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
   .row b{font-weight:bold}
@@ -453,14 +471,23 @@ function printDeliverySlip(doc){
 <html><head><meta charset="UTF-8">
 <style>
   @page{size:80mm auto;margin:1mm}
+.codeline{font-size:13pt}
+.row{font-size:7.5pt;margin-bottom:.6mm}
+.title{font-size:8.5pt;padding:1.2mm}
+.logo{font-size:10pt}
+.sub{font-size:7pt}
+.footer-note{font-size:6pt;line-height:1.2}
+.pay-method-label{font-size:7pt}
+.sig-label{font-size:7.5pt}
+
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:76mm}
-  .slip{width:76mm;padding:2mm 2mm 1mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:10pt;color:#000;width:75mm}
+  .slip{width:75mm;padding:1.8mm 1.8mm 1mm}
   .logo{text-align:center;font-size:11pt;font-weight:bold;margin-bottom:.5mm}
   .sub{text-align:center;font-size:7.5pt;margin-bottom:2mm}
   .title{text-align:center;font-size:9pt;font-weight:bold;border:1px solid #000;padding:1.5mm;margin-bottom:1.5mm}
   .codeline{text-align:center;font-size:14pt;font-weight:bold;letter-spacing:1px;margin:1mm 0}
-  .bcimg{display:block;margin:0 auto 1.5mm;width:70mm}
+  .bcimg{display:block;margin:0 auto 1.5mm;width:68mm}
   hr{border:none;border-top:1px dashed #888;margin:2mm 0}
   .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:.8mm}
   .row b{font-weight:bold}
