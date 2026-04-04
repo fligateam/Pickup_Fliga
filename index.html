@@ -114,6 +114,21 @@
   </div>
 </div>
 
+
+<!-- MODAL RETIRAR PAGO -->
+<div class="overlay" id="modalUnpay">
+  <div class="modal">
+    <h3>Retirar Estado de Pago</h3>
+    <label>Operador (número)</label><input id="unpayOp" type="number">
+    <label>Justificação</label>
+    <textarea id="unpayJust" rows="3" placeholder="Motivo obrigatório"></textarea>
+    <div class="split">
+      <button class="btn btn-danger" style="flex:1" onclick="confirmUnpay()">Retirar Pago</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalUnpay')">Cancelar</button>
+    </div>
+    <div id="unpayMsg" style="margin-top:8px;font-size:12px;color:#b03030"></div>
+  </div>
+</div>
 <!-- MODAL ANULAR -->
 <div class="overlay" id="modalAnular">
   <div class="modal">
@@ -199,7 +214,21 @@
     </div>
   </div>
 
-  <!-- GESTÃO -->
+  
+<!-- MODAL PURGAR -->
+<div class="overlay" id="modalPurge">
+  <div class="modal">
+    <h3>⚠ Apagar Registos Antigos</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Serão apagados <strong>permanentemente</strong> todos os pick-ups (incluindo anulados) com data superior a 6 meses. Esta ação é irreversível.</p>
+    <label>Operador (apenas nº 64)</label><input id="purgeOp" type="number" placeholder="64">
+    <div class="split">
+      <button class="btn btn-danger" style="flex:1" onclick="confirmPurge()">Apagar do Firebase</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalPurge')">Cancelar</button>
+    </div>
+    <div id="purgeMsg" style="margin-top:8px;font-size:12px"></div>
+  </div>
+</div>
+<!-- GESTÃO -->
   <div id="gestao" class="section">
     <div class="card">
       <div class="toolbar">
@@ -217,6 +246,7 @@
         <div style="display:flex;gap:8px;align-items:flex-end">
           <button class="btn btn-primary" id="btnFilter" style="flex:1">Filtrar</button>
           <button class="btn btn-ghost" id="btnExport" style="flex:1">Exportar XLS</button>
+          <button class="btn btn-danger" id="btnPurge" style="flex:1;margin-top:8px" onclick="openModal('modalPurge')">🗑 Apagar &gt;6 meses</button>
         </div>
       </div>
       <div class="kpi-grid">
@@ -255,7 +285,7 @@ const PICKUPS = db.collection('pickups');
 // ── Constants ───────────────────────────────────────────────
 const ALPHA='ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const GESTAO_PASS='F03573';
-const SUPER_OP='00';
+const SUPER_OP='64';
 const pad=n=>String(n).padStart(2,'0');
 const todayISO=()=>{const d=new Date();return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;};
 const fmtDate=s=>{if(!s)return '';const[y,m,dv]=s.split('-');return `${dv}/${m}/${y}`;};
@@ -264,6 +294,7 @@ const shortDate=s=>{if(!s)return '';const[y,m,dv]=s.split('-');return `${dv}${m}
 let gestaoUnlocked=false;
 let currentPayCode=null;
 let currentAnulCode=null;
+let currentUnpayCode=null;
 let lastDispensed=null;
 window._filteredData=[];
 
@@ -405,7 +436,7 @@ function buildSlipHTML(doc,receipt,bcDataURL){
     <div class="pay-method-label">Método de Pagamento:</div>
     <div class="pay-method-box"></div>
   </div>
-  <div class="footer-note">O pick-up só será considerado PAGO após junção de comprovativo de pagamento. Se numerário ou caixa automática, sinalizar________.</div>
+  <div class="footer-note">O pick-up só será considerado PAGO após junção de comprovativo de pagamento. Se numerário ou caixa automática, sinalizar (__________).</div>
   <hr>
   <div class="sig-row">
     <div class="sig-label">Data de Entrega:</div>
@@ -488,12 +519,25 @@ document.getElementById('btnRePrint').onclick=()=>{if(lastDispensed)printDeliver
 
 // ── Payment modal ───────────────────────────────────────────
 window.openPayModal=(code)=>{currentPayCode=code;document.getElementById('payMsg').textContent='';openModal('modalPagamento');};
+window.openUnpayModal=(code)=>{currentUnpayCode=code;document.getElementById('unpayMsg').textContent='';document.getElementById('unpayOp').value='';document.getElementById('unpayJust').value='';openModal('modalUnpay');};
 async function confirmPayment(){
   const op=document.getElementById('payOp').value.trim();
   const method=document.getElementById('payMethod').value;
   if(!op||!method){document.getElementById('payMsg').textContent='Preencha todos os campos.';return;}
-  await PICKUPS.doc(currentPayCode).update({paid:true,status:'Pago',payOp:String(op),payMethod:method,payAt:new Date().toISOString()});
+  await PICKUPS.doc(currentPayCode).update({paid:true,status:'Pago',payOp:String(op),payMethod:method,payAt:new Date().toISOString(),unpaidJust:null,unpaidBy:null,unpaidAt:null});
   closeModal('modalPagamento');
+  loadAll();
+}
+async function confirmUnpay(){
+  const op=document.getElementById('unpayOp').value.trim();
+  const just=document.getElementById('unpayJust').value.trim();
+  if(!op||!just){document.getElementById('unpayMsg').textContent='Operador e justificação são obrigatórios.';return;}
+  const snap=await PICKUPS.doc(currentUnpayCode).get();
+  if(!snap.exists)return;
+  const data=snap.data();
+  if(data.delivered){document.getElementById('unpayMsg').textContent='Não pode retirar pago a um pick-up já entregue.';return;}
+  await PICKUPS.doc(currentUnpayCode).update({paid:false,status:'Pendente',unpaidBy:String(op),unpaidJust:just,unpaidAt:new Date().toISOString()});
+  closeModal('modalUnpay');
   loadAll();
 }
 
@@ -519,6 +563,22 @@ async function confirmAnular(){
 }
 
 // ── Load all ────────────────────────────────────────────────
+
+async function confirmPurge(){
+  const op=document.getElementById('purgeOp').value.trim();
+  if(op!==SUPER_OP){document.getElementById('purgeMsg').textContent='Apenas o operador 64 pode apagar registos.';document.getElementById('purgeMsg').style.color='#b03030';return;}
+  const cutoff=new Date();
+  cutoff.setMonth(cutoff.getMonth()-6);
+  const cutoffStr=cutoff.toISOString().slice(0,10);
+  const snap=await PICKUPS.where('date','<=',cutoffStr).get();
+  if(snap.empty){document.getElementById('purgeMsg').textContent='Sem registos com mais de 6 meses.';document.getElementById('purgeMsg').style.color='var(--green)';return;}
+  const batch=db.batch();
+  snap.docs.forEach(d=>batch.delete(d.ref));
+  await batch.commit();
+  document.getElementById('purgeMsg').textContent=`✔ Apagados ${snap.size} registos do Firebase.`;
+  document.getElementById('purgeMsg').style.color='var(--green)';
+  setTimeout(()=>{closeModal('modalPurge');loadAll();},1500);
+}
 async function loadAll(){
   const snap=await PICKUPS.orderBy('createdAt','desc').get();
   const all=snap.docs.map(d=>({...d.data(),_id:d.id}));
@@ -578,6 +638,7 @@ function renderGestao(all){
     <td style="font-size:11px">${x.createdAt&&x.createdAt.toDate?x.createdAt.toDate().toLocaleString('pt-PT'):'—'}</td>
     <td style="white-space:nowrap">
       ${!x.paid&&!x.canceled?`<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagar</button> `:''}
+      ${x.paid&&!x.canceled?`<button class="btn btn-ghost btn-sm" onclick="openUnpayModal('${x.code}')">Retirar Pago</button> `:''}
       ${!x.canceled?`<button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>`:''}
     </td></tr>`).join('')||'<tr><td colspan="8" style="color:var(--muted)">Sem resultados</td></tr>';
   const canceled=all.filter(x=>x.canceled);
