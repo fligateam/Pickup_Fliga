@@ -502,7 +502,7 @@ function printPickupSlips(doc){
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  canvas.bc{display:block;margin:0 auto 1mm;max-width:${cfg.bcWidth}}
+  svg.bc{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
@@ -518,8 +518,8 @@ function printPickupSlips(doc){
 </head><body>${slips}
 <script>
 window.onload=function(){
-  document.querySelectorAll('canvas.bc').forEach(function(c){
-    JsBarcode(c,c.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
+  document.querySelectorAll('svg.bc').forEach(function(s){
+    JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
   });
   setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
 };
@@ -540,7 +540,7 @@ function buildSlipHTML(doc,label,idx,cfg){
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">${label}</div>
   <div class="codeline">${doc.code}</div>
-  <canvas class="bc" data-code="${doc.code}"></canvas>
+  <svg class="bc" data-code="${doc.code}"></svg>
   <hr>
   <div class="row"><span>Operador:</span><b>${doc.op}</b></div>
   <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
@@ -574,7 +574,7 @@ function printDeliverySlip(doc){
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  canvas.bc{display:block;margin:0 auto 1mm;max-width:${cfg.bcWidth}}
+  svg.bc{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
@@ -588,7 +588,7 @@ function printDeliverySlip(doc){
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">COMPROVATIVO DE DISPENSA</div>
   <div class="codeline">${doc.code}</div>
-  <canvas class="bc" data-code="${doc.code}"></canvas>
+  <svg class="bc" data-code="${doc.code}"></svg>
   <hr>
   <div class="row"><span>Operador Criacao:</span><b>${doc.op}</b></div>
   <div class="row"><span>Dispensado por:</span><b>${doc.deliveredBy}</b></div>
@@ -605,6 +605,16 @@ function printDeliverySlip(doc){
   ${cfg.feedStr}
 </div>
 <script>
+window.onload=function(){
+  document.querySelectorAll('svg.bc').forEach(function(s){
+    JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
+  });
+  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
+};
+<\/script>
+</body></html>`);
+  win.document.close();
+}
 window.onload=function(){
   document.querySelectorAll('canvas.bc').forEach(function(c){
     JsBarcode(c,c.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
