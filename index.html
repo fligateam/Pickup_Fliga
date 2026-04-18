@@ -505,7 +505,7 @@ function makeBarcodePNG(code, widthPx){
 // ── Print pickup slips ─────────────────────────────────────
 // ── Print pickup slips ─────────────────────────────────────
 async function printDeliverySlip(doc){
-  const bcPNG = await makeBarcodePN G(doc.code, 350);
+  const bcPNG = await makeBarcodePNG(doc.code, 350);
   const win = window.open('','_blank','width=340,height=500');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
