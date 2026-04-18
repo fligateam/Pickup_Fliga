@@ -453,15 +453,6 @@ document.getElementById('btnCreate').onclick=async()=>{
   document.getElementById('btnCreate').disabled=false;
 };
 
-// ── Barcode PNG ────────────────────────────────────────────
-function makeBarcodeDataUrl(code){
-  const c=document.createElement('canvas');
-  document.body.appendChild(c);
-  JsBarcode(c,code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:60,margin:6,background:'#ffffff',lineColor:'#000000'});
-  const url=c.toDataURL('image/png');
-  document.body.removeChild(c);
-  return url;
-}
 
 // ── Preview ────────────────────────────────────────────────
 function renderPreview(doc){
