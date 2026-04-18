@@ -482,107 +482,48 @@ function getReceiptTypes(ptype){
     default:           return ['Pick-up','Duplicado'];
   }
 }
-
-// ── Print pickup slips ─────────────────────────────────────
-// ── Print pickup slips ─────────────────────────────────────
-function printPickupSlips(doc){
-  const receipts=getReceiptTypes(doc.ptype);
-  const cfg=getPrintCSS();
-  const printDelay=cfg.model==='rs232'?600:350;  // ← adicionar
-  const slips=receipts.map((label,i)=>buildSlipHTML(doc,label,i,cfg)).join('')+cfg.feedStr;
-  const win=window.open('','_blank','width=340,height=700');
-  win.document.write(`<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
-<style>
-  @page{size:${cfg.paper}mm auto;margin:0.5mm}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:${cfg.bodyWidth};line-height:${cfg.lineH}}
-  .slip{width:${cfg.slipWidth};padding:1.5mm 1.5mm 1mm;break-after:auto;page-break-after:auto}
-  .logo{text-align:center;font-size:10pt;font-weight:bold;letter-spacing:.3px;margin-bottom:.3mm}
-  .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
-  .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
-  .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  svg.bc{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
-  hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
-  .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
-  .row b{font-weight:bold}
-  .pago-section{border:1px solid #000;padding:1mm;margin:1.5mm 0}
-  .pago-line{display:flex;align-items:center;gap:2mm;font-size:10pt;font-weight:bold;margin-bottom:1mm}
-  .checkbox{width:5.5mm;height:5.5mm;border:1.5px solid #000;display:inline-block;flex-shrink:0}
-  .pay-method-label{font-size:7pt;font-weight:bold;margin-bottom:.5mm}
-  .pay-method-box{border:1px solid #000;height:6mm;width:100%}
-  .footer-note{font-size:6pt;line-height:1.2;text-align:center;color:#333;margin:1mm 0}
-  .locs-box{border:1px dashed #555;padding:1mm;margin:1mm 0;font-size:7pt}
-  .locs-title{font-weight:bold;margin-bottom:.3mm;font-size:7pt}
-</style>
-</head><body>${slips}
-<script>
-window.onload=function(){
-  document.querySelectorAll('svg.bc').forEach(function(s){
-    JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
+function makeBarcodePNG(code, widthPx){
+  return new Promise(function(resolve){
+    const canvas = document.createElement('canvas');
+    document.body.appendChild(canvas);
+    JsBarcode(canvas, code, {
+      format:'CODE128', displayValue:true, font:'Arial',
+      width:2, height:60, margin:6,
+      background:'#ffffff', lineColor:'#000000'
+    });
+    const out = document.createElement('canvas');
+    out.width = widthPx;
+    out.height = Math.round(canvas.height * (widthPx / canvas.width));
+    const ctx = out.getContext('2d');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, out.width, out.height);
+    ctx.drawImage(canvas, 0, 0, out.width, out.height);
+    document.body.removeChild(canvas);
+    resolve(out.toDataURL('image/png'));
   });
-  setTimeout(function(){window.print();},${printDelay});
-};
-<\/script>
-</body></html>`);
-  win.document.close();
 }
-
-function getOtherLocs(ptype,currentLabel){
-  const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
-  return all;
-}
-function buildSlipHTML(doc,label,idx,cfg){
-  const others=getOtherLocs(doc.ptype,label).filter(l=>!l.includes('Duplicado'));
-  const locsNote=others.length>0?`<div class="locs-box"><div class="locs-title">Atencao: Este pickup tem mais localizacoes:</div>${others.map(l=>`<div>- ${l}</div>`).join('')}</div>`:'';
-  return `<div class="slip">
-  <div class="logo">FARMACIA DA LIGA</div>
-  <div class="sub">Vila Nova de Gaia</div>
-  <div class="title">${label}</div>
-  <div class="codeline">${doc.code}</div>
-  <svg class="bc" data-code="${doc.code}"></svg>
-  <hr>
-  <div class="row"><span>Operador:</span><b>${doc.op}</b></div>
-  <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
-  <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
-  <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
-  ${locsNote}
-  <hr>
-  <div class="pago-section">
-    <div class="pago-line"><div class="checkbox"></div><span>PAGO</span></div>
-    <div class="pay-method-label">Metodo de Pagamento:</div>
-    <div class="pay-method-box"></div>
-  </div>
-  <div class="footer-note">O pickup so sera considerado PAGO apos juntacao de comprovativo de pagamento. Se numerario ou caixa automatica, sinalizar (colocar espaco).</div>
-  <hr>
-</div>`;
-}
-
-// ── Print delivery slip ────────────────────────────────────
-function printDeliverySlip(doc){
-  const cfg=getPrintCSS();
-  const printDelay=cfg.model==='rs232'?600:350;
-  const win=window.open('','_blank','width=340,height=500');
+// ── Print pickup slips ─────────────────────────────────────
+// ── Print pickup slips ─────────────────────────────────────
+async function printDeliverySlip(doc){
+  const bcPNG = await makeBarcodePN G(doc.code, 350);
+  const win = window.open('','_blank','width=340,height=500');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
-  @page{size:${cfg.paper}mm auto;margin:0.5mm}
+  @page{size:80mm auto;margin:2mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:${cfg.bodyWidth};line-height:${cfg.lineH}}
-  .slip{width:${cfg.slipWidth};padding:1.5mm 1.5mm 1mm}
-  .logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:.3mm}
-  .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
+  body{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:72mm;background:#fff}
+  .slip{width:72mm;padding:2mm}
+  .logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:1mm}
+  .sub{text-align:center;font-size:7pt;margin-bottom:2mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
-  .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  svg.bc{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
-  hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
-  .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
-  .row b{font-weight:bold}
-  .stamp{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:1.5px;border:2px solid #000;padding:2mm;margin:2mm 0}
-  .sig-label{font-size:7.5pt;margin-bottom:.8mm}
-  .sig-line{border-bottom:1px solid #000;height:5mm;margin-bottom:1.5mm}
+  .codeline{text-align:center;font-size:12pt;font-weight:bold;margin:1mm 0}
+  .bcimg{display:block;width:68mm;margin:1mm auto}
+  hr{border:none;border-top:1px dashed #000;margin:1.5mm 0}
+  .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:1mm}
+  .stamp{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:2px;border:2px solid #000;padding:2mm;margin:2mm 0}
+  .sig-label{font-size:7.5pt;margin-bottom:1mm}
+  .sig-line{border-bottom:1px solid #000;height:6mm;margin-bottom:2mm}
 </style>
 </head><body>
 <div class="slip">
@@ -590,7 +531,7 @@ function printDeliverySlip(doc){
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">COMPROVATIVO DE DISPENSA</div>
   <div class="codeline">${doc.code}</div>
-  <svg class="bc" data-code="${doc.code}"></svg>
+  <img class="bcimg" src="${bcPNG}">
   <hr>
   <div class="row"><span>Operador Criacao:</span><b>${doc.op}</b></div>
   <div class="row"><span>Dispensado por:</span><b>${doc.deliveredBy}</b></div>
@@ -604,16 +545,75 @@ function printDeliverySlip(doc){
   <div class="sig-line"></div>
   <div class="sig-label">Assinatura do Cliente:</div>
   <div class="sig-line"></div>
-  ${cfg.feedStr}
 </div>
-<script>
-window.onload=function(){
-  document.querySelectorAll('svg.bc').forEach(function(s){
-    JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
-  });
-  setTimeout(function(){window.print();},${printDelay});
-};
-<\/script>
+<script>window.onload=function(){window.print();};<\/script>
+</body></html>`);
+  win.document.close();
+}
+
+function getOtherLocs(ptype,currentLabel){
+  const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
+  return all;
+}
+function buildSlipHTML(doc, label, bcPNG){
+  const others = getOtherLocs(doc.ptype, label).filter(l => !l.includes('Duplicado'));
+  const locsNote = others.length > 0
+    ? `<div class="locs-box"><b>Atencao: mais localizacoes:</b><br>${others.map(l=>`- ${l}`).join('<br>')}</div>`
+    : '';
+  return `<div class="slip">
+  <div class="logo">FARMACIA DA LIGA</div>
+  <div class="sub">Vila Nova de Gaia</div>
+  <div class="title">${label}</div>
+  <div class="codeline">${doc.code}</div>
+  <img class="bcimg" src="${bcPNG}">
+  <hr>
+  <div class="row"><span>Operador:</span><b>${doc.op}</b></div>
+  <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
+  <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
+  <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
+  ${locsNote}
+  <hr>
+  <div class="pago-section">
+    <div class="pago-line"><div class="checkbox"></div><span>PAGO</span></div>
+    <div class="pay-method-label">Metodo de Pagamento:</div>
+    <div class="pay-method-box"></div>
+  </div>
+  <div class="footer-note">O pickup so sera considerado PAGO apos juntacao de comprovativo de pagamento.</div>
+  <hr>
+</div>`;
+}
+
+// ── Print delivery slip ────────────────────────────────────
+async function printPickupSlips(doc){
+  const receipts = getReceiptTypes(doc.ptype);
+  const bcPNG = await makeBarcodePNG(doc.code, 350);
+  const slips = receipts.map(label => buildSlipHTML(doc, label, bcPNG)).join('');
+  const win = window.open('','_blank','width=340,height=700');
+  win.document.write(`<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>
+  @page{size:80mm auto;margin:2mm}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:72mm;background:#fff}
+  .slip{width:72mm;padding:2mm;page-break-after:always}
+  .slip:last-child{page-break-after:avoid}
+  .logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:1mm}
+  .sub{text-align:center;font-size:7pt;margin-bottom:2mm}
+  .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
+  .codeline{text-align:center;font-size:12pt;font-weight:bold;margin:1mm 0}
+  .bcimg{display:block;width:68mm;margin:1mm auto}
+  hr{border:none;border-top:1px dashed #000;margin:1.5mm 0}
+  .row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:1mm}
+  .pago-section{border:1px solid #000;padding:1.5mm;margin:1.5mm 0}
+  .pago-line{display:flex;align-items:center;gap:2mm;font-size:10pt;font-weight:bold;margin-bottom:1mm}
+  .checkbox{width:5mm;height:5mm;border:1.5px solid #000;display:inline-block}
+  .pay-method-label{font-size:7pt;font-weight:bold;margin-bottom:1mm}
+  .pay-method-box{border:1px solid #000;height:6mm;width:100%}
+  .footer-note{font-size:6pt;text-align:center;color:#333;margin:1mm 0;line-height:1.3}
+  .locs-box{border:1px dashed #555;padding:1mm;margin:1mm 0;font-size:7pt}
+</style>
+</head><body>${slips}
+<script>window.onload=function(){window.print();};<\/script>
 </body></html>`);
   win.document.close();
 }
