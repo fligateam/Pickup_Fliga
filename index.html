@@ -488,6 +488,7 @@ function getReceiptTypes(ptype){
 function printPickupSlips(doc){
   const receipts=getReceiptTypes(doc.ptype);
   const cfg=getPrintCSS();
+  const printDelay=cfg.model==='rs232'?600:350;  // ← adicionar
   const slips=receipts.map((label,i)=>buildSlipHTML(doc,label,i,cfg)).join('')+cfg.feedStr;
   const win=window.open('','_blank','width=340,height=700');
   win.document.write(`<!DOCTYPE html>
@@ -521,7 +522,7 @@ window.onload=function(){
   document.querySelectorAll('svg.bc').forEach(function(s){
     JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
   });
-  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
+  setTimeout(function(){window.print();},${printDelay});
 };
 <\/script>
 </body></html>`);
@@ -561,6 +562,7 @@ function buildSlipHTML(doc,label,idx,cfg){
 // ── Print delivery slip ────────────────────────────────────
 function printDeliverySlip(doc){
   const cfg=getPrintCSS();
+  const printDelay=cfg.model==='rs232'?600:350;
   const win=window.open('','_blank','width=340,height=500');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
@@ -609,17 +611,7 @@ window.onload=function(){
   document.querySelectorAll('svg.bc').forEach(function(s){
     JsBarcode(s,s.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
   });
-  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
-};
-<\/script>
-</body></html>`);
-  win.document.close();
-}
-window.onload=function(){
-  document.querySelectorAll('canvas.bc').forEach(function(c){
-    JsBarcode(c,c.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
-  });
-  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
+  setTimeout(function(){window.print();},${printDelay});
 };
 <\/script>
 </body></html>`);
