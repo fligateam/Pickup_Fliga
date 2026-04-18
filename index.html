@@ -74,9 +74,67 @@
     .check-row{display:flex;align-items:center;gap:10px;margin:12px 0}
     .check-row input[type=checkbox]{width:18px;height:18px;border-radius:4px;flex-shrink:0}
     .check-row label{margin:0;text-transform:none;font-size:13px;color:var(--text);font-weight:600}
+    /* ── Printer config additions ── */
+    .config-btn{background:rgba(255,255,255,.15);border:none;color:#fff;border-radius:10px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;transition:.2s}
+    .config-btn:hover{background:rgba(255,255,255,.28)}
+    .radio-row{display:flex;align-items:flex-start;gap:10px;margin:8px 0;padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;cursor:pointer;transition:.2s}
+    .radio-row:hover{border-color:var(--green2);background:#f4faf6}
+    .radio-row.selected{border-color:var(--green);background:#eaf4ee}
+    .radio-row input[type=radio]{width:16px;height:16px;flex-shrink:0;margin-top:2px;accent-color:var(--green)}
+    .radio-row .rl{display:flex;flex-direction:column}
+    .radio-row .rl-title{font-size:13px;font-weight:700;color:var(--text)}
+    .radio-row .rl-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .cfg-badge{display:inline-block;background:rgba(255,255,255,.22);border-radius:8px;padding:2px 8px;font-size:11px;margin-left:6px;font-weight:600}
   </style>
 </head>
 <body>
+
+<!-- MODAL CONFIGURAÇÕES IMPRESSORA -->
+<div class="overlay" id="modalPrinter">
+  <div class="modal" style="max-width:480px">
+    <h3>⚙️ Configurações de Impressão</h3>
+    <label style="margin-top:0">Modelo / Interface da Impressora</label>
+    <div class="radio-row selected" id="rrow_usb" onclick="selectPrinterModel('usb')">
+      <input type="radio" name="printerModel" id="pm_usb" value="usb" checked>
+      <div class="rl">
+        <span class="rl-title">Epson 80mm — USB / Bluetooth / rede</span>
+        <span class="rl-sub">Impressora térmica ligada por USB, Bluetooth ou rede Wi-Fi. Papel 80mm, margem padrão.</span>
+      </div>
+    </div>
+    <div class="radio-row" id="rrow_rs232" onclick="selectPrinterModel('rs232')">
+      <input type="radio" name="printerModel" id="pm_rs232" value="rs232">
+      <div class="rl">
+        <span class="rl-title">Epson RS232 — Porta Série (COM)</span>
+        <span class="rl-sub">Impressora térmica ligada por cabo série RS232 (COM1/COM2). Compatível com Epson TM-T20, TM-T88, TM-U220 e similares. Pode requerer configuração de porta no Windows.</span>
+      </div>
+    </div>
+    <label>Largura do Papel</label>
+    <select id="cfgPaperWidth">
+      <option value="80">80mm (padrão — Epson TM-T88, TM-T20…)</option>
+      <option value="76">76mm (Epson TM-U220, impressoras matriciais série)</option>
+      <option value="58">58mm (impressoras compactas)</option>
+    </select>
+    <label>Avançar papel no fim (linhas extra)</label>
+    <select id="cfgFeedLines">
+      <option value="0">0 — sem avanço extra</option>
+      <option value="3">3 linhas</option>
+      <option value="5" selected>5 linhas (recomendado RS232)</option>
+      <option value="8">8 linhas</option>
+    </select>
+    <div id="rs232Info" style="display:none;background:#fff8e1;border:1px solid #f0c040;border-radius:10px;padding:10px 12px;font-size:11px;color:#7a5800;margin-top:10px;line-height:1.6">
+      <strong>ℹ️ Nota RS232:</strong> Para impressoras série, certifique-se que:<br>
+      • A porta COM está configurada no Windows (ex: COM1, 9600bps, 8N1)<br>
+      • O driver Epson OPOS ou APD está instalado<br>
+      • O Chrome/Edge tem permissão de acesso à porta série (WebSerial API) se necessário<br>
+      • Para impressão via browser, o Windows partilha a impressora como impressora de sistema.
+    </div>
+    <div class="split" style="margin-top:16px">
+      <button class="btn btn-primary" style="flex:1" onclick="savePrinterConfig()">Guardar</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalPrinter')">Cancelar</button>
+    </div>
+    <div id="cfgMsg" style="margin-top:8px;font-size:12px;color:var(--green);display:none">✓ Configuração guardada.</div>
+  </div>
+</div>
 
 <!-- LOCK -->
 <div id="lockOverlay" style="display:none">
@@ -160,7 +218,13 @@
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="rgba(255,255,255,.13)"/><path d="M16 6v20M6 16h20" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
     <h1>Farmacia da Liga — Gestao de Pick-ups</h1>
   </div>
-  <span style="font-size:12px;opacity:.7" id="headerDate"></span>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:12px;opacity:.7" id="headerDate"></span>
+    <button class="config-btn" onclick="openModal('modalPrinter')" title="Configurações de Impressão">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Impressora<span class="cfg-badge" id="cfgBadge">80mm</span>
+    </button>
+  </div>
 </header>
 
 <div class="wrap">
@@ -278,6 +342,49 @@
 </div>
 
 <script>
+// ── Printer Config ─────────────────────────────────────────
+function loadPrinterConfig(){
+  const model=localStorage.getItem('printerModel')||'usb';
+  const paper=localStorage.getItem('printerPaperWidth')||'80';
+  const feed=localStorage.getItem('printerFeedLines')||'5';
+  document.getElementById('pm_'+model).checked=true;
+  document.getElementById('rrow_usb').classList.toggle('selected',model==='usb');
+  document.getElementById('rrow_rs232').classList.toggle('selected',model==='rs232');
+  document.getElementById('cfgPaperWidth').value=paper;
+  document.getElementById('cfgFeedLines').value=feed;
+  document.getElementById('rs232Info').style.display=model==='rs232'?'block':'none';
+  document.getElementById('cfgBadge').textContent=model==='rs232'?'RS232':paper+'mm';
+}
+function selectPrinterModel(val){
+  document.getElementById('pm_'+val).checked=true;
+  document.getElementById('rrow_usb').classList.toggle('selected',val==='usb');
+  document.getElementById('rrow_rs232').classList.toggle('selected',val==='rs232');
+  document.getElementById('rs232Info').style.display=val==='rs232'?'block':'none';
+}
+function savePrinterConfig(){
+  const model=document.querySelector('input[name="printerModel"]:checked').value;
+  const paper=document.getElementById('cfgPaperWidth').value;
+  const feed=document.getElementById('cfgFeedLines').value;
+  localStorage.setItem('printerModel',model);
+  localStorage.setItem('printerPaperWidth',paper);
+  localStorage.setItem('printerFeedLines',feed);
+  document.getElementById('cfgBadge').textContent=model==='rs232'?'RS232':paper+'mm';
+  document.getElementById('cfgMsg').style.display='block';
+  setTimeout(()=>{document.getElementById('cfgMsg').style.display='none';closeModal('modalPrinter');},1200);
+}
+function getPrintCSS(){
+  const paper=localStorage.getItem('printerPaperWidth')||'80';
+  const feed=parseInt(localStorage.getItem('printerFeedLines')||'5');
+  const model=localStorage.getItem('printerModel')||'usb';
+  const bodyWidth=(parseInt(paper)-8)+'mm';
+  const slipWidth=(parseInt(paper)-8)+'mm';
+  const bcWidth=(parseInt(paper)-16)+'mm';
+  const feedStr=feed>0?`<div style="line-height:${feed*4}mm;font-size:1px">&nbsp;</div>`:'';
+  const lineH=model==='rs232'?'1.5':'1.4';
+  return {paper,bodyWidth,slipWidth,bcWidth,feedStr,lineH,model};
+}
+loadPrinterConfig();
+
 firebase.initializeApp({
   apiKey:"AIzaSyB1H6Da_3tPxEgtoT1RZgVWNTPBYVGdvTw",
   authDomain:"fliga-pickup.firebaseapp.com",
@@ -325,7 +432,7 @@ document.getElementById('btnCreate').onclick=async()=>{
   const value=parseFloat(document.getElementById('c_value').value)||0;
   const ptype=document.getElementById('c_type').value;
   const rxCheck=document.getElementById('c_rx').checked;
-    const rx=rxCheck||ptype.includes('PSI');
+  const rx=rxCheck||ptype.includes('PSI');
   if(!op)return showMsg('createMsg','Indique o operador.','err');
   document.getElementById('btnCreate').disabled=true;
   try{
@@ -373,7 +480,6 @@ function renderPreview(doc){
 }
 
 // ── Receipt types ──────────────────────────────────────────
-// Always N locations + 1 extra duplicate
 function getReceiptTypes(ptype){
   switch(ptype){
     case 'AMB':        return ['Temperatura Ambiente','Temperatura Ambiente - Duplicado'];
@@ -386,24 +492,25 @@ function getReceiptTypes(ptype){
   }
 }
 
-// ── Print pickup slips – Epson 80mm ────────────────────────
+// ── Print pickup slips ─────────────────────────────────────
 function printPickupSlips(doc){
   const receipts=getReceiptTypes(doc.ptype);
   const bcDataURL=makeBarcodeDataUrl(doc.code);
-  const slips=receipts.map(label=>buildSlipHTML(doc,label,bcDataURL)).join('');
+  const cfg=getPrintCSS();
+  const slips=receipts.map(label=>buildSlipHTML(doc,label,bcDataURL,cfg)).join('')+cfg.feedStr;
   const win=window.open('','_blank','width=340,height=700');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
-  @page{size:80mm auto;margin:0.5mm}
+  @page{size:${cfg.paper}mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:72mm}
-  .slip{width:72mm;padding:1.5mm 1.5mm 1mm;break-after:auto;page-break-after:auto}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:${cfg.bodyWidth};line-height:${cfg.lineH}}
+  .slip{width:${cfg.slipWidth};padding:1.5mm 1.5mm 1mm;break-after:auto;page-break-after:auto}
   .logo{text-align:center;font-size:10pt;font-weight:bold;letter-spacing:.3px;margin-bottom:.3mm}
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  .bcimg{display:block;margin:0 auto 1mm;width:64mm;max-width:64mm}
+  .bcimg{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
@@ -414,9 +521,10 @@ function printPickupSlips(doc){
   .pay-method-box{border:1px solid #000;height:6mm;width:100%}
   .footer-note{font-size:6pt;line-height:1.2;text-align:center;color:#333;margin:1mm 0}
   .locs-box{border:1px dashed #555;padding:1mm;margin:1mm 0;font-size:7pt}
-  .locs-title{font-weight:bold;margin-bottom:.3mm;font-size:7pt}</style>
+  .locs-title{font-weight:bold;margin-bottom:.3mm;font-size:7pt}
+</style>
 </head><body>${slips}
-<script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+<script>window.onload=function(){setTimeout(function(){window.print();},${cfg.model==='rs232'?400:250});};<\/script>
 </body></html>`);
   win.document.close();
 }
@@ -425,7 +533,7 @@ function getOtherLocs(ptype,currentLabel){
   const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
   return all;
 }
-function buildSlipHTML(doc,label,bcDataURL){
+function buildSlipHTML(doc,label,bcDataURL,cfg){
   const others=getOtherLocs(doc.ptype,label).filter(l=>!l.includes('Duplicado'));
   const locsNote=others.length>0?`<div class="locs-box"><div class="locs-title">Atencao: Este pickup tem mais localizacoes:</div>${others.map(l=>`<div>- ${l}</div>`).join('')}</div>`:'';
   return `<div class="slip">
@@ -454,25 +562,27 @@ function buildSlipHTML(doc,label,bcDataURL){
 // ── Print delivery slip ────────────────────────────────────
 function printDeliverySlip(doc){
   const bcDataURL=makeBarcodeDataUrl(doc.code);
+  const cfg=getPrintCSS();
   const win=window.open('','_blank','width=340,height=500');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
 <style>
-  @page{size:80mm auto;margin:0.5mm}
+  @page{size:${cfg.paper}mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:72mm}
-  .slip{width:72mm;padding:1.5mm 1.5mm 1mm}
+  body{font-family:Arial,Helvetica,sans-serif;background:#fff;font-size:9pt;color:#000;width:${cfg.bodyWidth};line-height:${cfg.lineH}}
+  .slip{width:${cfg.slipWidth};padding:1.5mm 1.5mm 1mm}
   .logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:.3mm}
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  .bcimg{display:block;margin:0 auto 1mm;width:64mm}
+  .bcimg{display:block;margin:0 auto 1mm;width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
   .stamp{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:1.5px;border:2px solid #000;padding:2mm;margin:2mm 0}
   .sig-label{font-size:7.5pt;margin-bottom:.8mm}
-  .sig-line{border-bottom:1px solid #000;height:5mm;margin-bottom:1.5mm}</style>
+  .sig-line{border-bottom:1px solid #000;height:5mm;margin-bottom:1.5mm}
+</style>
 </head><body>
 <div class="slip">
   <div class="logo">FARMACIA DA LIGA</div>
@@ -493,8 +603,9 @@ function printDeliverySlip(doc){
   <div class="sig-line"></div>
   <div class="sig-label">Assinatura do Cliente:</div>
   <div class="sig-line"></div>
+  ${cfg.feedStr}
 </div>
-<script>window.onload=function(){setTimeout(function(){window.print();},250);};<\/script>
+<script>window.onload=function(){setTimeout(function(){window.print();},${cfg.model==='rs232'?400:250});};<\/script>
 </body></html>`);
   win.document.close();
 }
