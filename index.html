@@ -493,14 +493,15 @@ function getReceiptTypes(ptype){
 }
 
 // ── Print pickup slips ─────────────────────────────────────
+// ── Print pickup slips ─────────────────────────────────────
 function printPickupSlips(doc){
   const receipts=getReceiptTypes(doc.ptype);
-  const bcDataURL=makeBarcodeDataUrl(doc.code);
   const cfg=getPrintCSS();
-  const slips=receipts.map(label=>buildSlipHTML(doc,label,bcDataURL,cfg)).join('')+cfg.feedStr;
+  const slips=receipts.map((label,i)=>buildSlipHTML(doc,label,i,cfg)).join('')+cfg.feedStr;
   const win=window.open('','_blank','width=340,height=700');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
   @page{size:${cfg.paper}mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -510,7 +511,7 @@ function printPickupSlips(doc){
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  .bcimg{display:block;margin:0 auto 1mm;width:${cfg.bcWidth};max-width:${cfg.bcWidth}}
+  canvas.bc{display:block;margin:0 auto 1mm;max-width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
@@ -524,7 +525,14 @@ function printPickupSlips(doc){
   .locs-title{font-weight:bold;margin-bottom:.3mm;font-size:7pt}
 </style>
 </head><body>${slips}
-<script>window.onload=function(){setTimeout(function(){window.print();},${cfg.model==='rs232'?400:250});};<\/script>
+<script>
+window.onload=function(){
+  document.querySelectorAll('canvas.bc').forEach(function(c){
+    JsBarcode(c,c.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
+  });
+  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
+};
+<\/script>
 </body></html>`);
   win.document.close();
 }
@@ -533,7 +541,7 @@ function getOtherLocs(ptype,currentLabel){
   const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
   return all;
 }
-function buildSlipHTML(doc,label,bcDataURL,cfg){
+function buildSlipHTML(doc,label,idx,cfg){
   const others=getOtherLocs(doc.ptype,label).filter(l=>!l.includes('Duplicado'));
   const locsNote=others.length>0?`<div class="locs-box"><div class="locs-title">Atencao: Este pickup tem mais localizacoes:</div>${others.map(l=>`<div>- ${l}</div>`).join('')}</div>`:'';
   return `<div class="slip">
@@ -541,7 +549,7 @@ function buildSlipHTML(doc,label,bcDataURL,cfg){
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">${label}</div>
   <div class="codeline">${doc.code}</div>
-  <img class="bcimg" src="${bcDataURL}" alt="barcode">
+  <canvas class="bc" data-code="${doc.code}"></canvas>
   <hr>
   <div class="row"><span>Operador:</span><b>${doc.op}</b></div>
   <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
@@ -561,11 +569,11 @@ function buildSlipHTML(doc,label,bcDataURL,cfg){
 
 // ── Print delivery slip ────────────────────────────────────
 function printDeliverySlip(doc){
-  const bcDataURL=makeBarcodeDataUrl(doc.code);
   const cfg=getPrintCSS();
   const win=window.open('','_blank','width=340,height=500');
   win.document.write(`<!DOCTYPE html>
 <html><head><meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"><\/script>
 <style>
   @page{size:${cfg.paper}mm auto;margin:0.5mm}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -575,7 +583,7 @@ function printDeliverySlip(doc){
   .sub{text-align:center;font-size:6.5pt;margin-bottom:1.5mm}
   .title{text-align:center;font-size:8pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}
   .codeline{text-align:center;font-size:13pt;font-weight:bold;letter-spacing:.5px;margin:.8mm 0}
-  .bcimg{display:block;margin:0 auto 1mm;width:${cfg.bcWidth}}
+  canvas.bc{display:block;margin:0 auto 1mm;max-width:${cfg.bcWidth}}
   hr{border:none;border-top:1px dashed #888;margin:1.5mm 0}
   .row{display:flex;justify-content:space-between;font-size:7.5pt;margin-bottom:.5mm}
   .row b{font-weight:bold}
@@ -589,7 +597,7 @@ function printDeliverySlip(doc){
   <div class="sub">Vila Nova de Gaia</div>
   <div class="title">COMPROVATIVO DE DISPENSA</div>
   <div class="codeline">${doc.code}</div>
-  <img class="bcimg" src="${bcDataURL}" alt="barcode">
+  <canvas class="bc" data-code="${doc.code}"></canvas>
   <hr>
   <div class="row"><span>Operador Criacao:</span><b>${doc.op}</b></div>
   <div class="row"><span>Dispensado por:</span><b>${doc.deliveredBy}</b></div>
@@ -605,11 +613,17 @@ function printDeliverySlip(doc){
   <div class="sig-line"></div>
   ${cfg.feedStr}
 </div>
-<script>window.onload=function(){setTimeout(function(){window.print();},${cfg.model==='rs232'?400:250});};<\/script>
+<script>
+window.onload=function(){
+  document.querySelectorAll('canvas.bc').forEach(function(c){
+    JsBarcode(c,c.dataset.code,{format:'CODE128',displayValue:true,font:'Arial',width:2,height:55,margin:4,background:'#ffffff',lineColor:'#000000'});
+  });
+  setTimeout(function(){window.print();},${cfg.model==='rs232'?600:350});
+};
+<\/script>
 </body></html>`);
   win.document.close();
 }
-
 // ── Dispense ───────────────────────────────────────────────
 document.getElementById('btnDispense').onclick=async()=>{
   const op=document.getElementById('d_op').value.trim();
