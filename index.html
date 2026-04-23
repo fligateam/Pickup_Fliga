@@ -757,43 +757,49 @@ function isUrgentRx(x){
 function renderPending(all){
   const items=all.filter(x=>!x.delivered&&!x.canceled);
   const el=document.getElementById('pendingList');
-  if(!items.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Sem pick-ups pendentes.</div>';return;}
+  if(!items.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Sem pick-ups pendentes.</div>';
+    return;
+  }
   el.innerHTML=items.map(x=>{
-   el.innerHTML = items.map(x => {
-  const urgent = isUrgentRx(x);
-  const encDoc = encodeURIComponent(JSON.stringify(x));
-  const encPay = encodeURIComponent(JSON.stringify(x));
-  return `<div class="pu-item${urgent ? ' urgent' : ''}">
-    <div>
-      <div class="pu-code">${x.code}${x.rx ? ' <span style="color:#c0392b;font-size:12px">RX</span>' : ''}</div>
-      <div class="pu-meta">Op. ${x.op} &nbsp;&nbsp; ${fmtDate(x.date)} &nbsp;&nbsp; ${parseFloat(x.value).toFixed(2)} EUR &nbsp;&nbsp; ${x.ptype}</div>
-      <div class="pu-meta">Criado em ${fmtDT(x.createdAtISO)}</div>
-      ${urgent ? '<div class="alert-rx">Atencao! Pick-up com medicamentos RX registados - avaliar com urgencia</div>' : ''}
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-      ${statePill(x.status)}
-      ${!x.paid ? '<button class="btn btn-ghost btn-sm" onclick="openPayModal(\'' + x.code + '\')">Pagamento</button>' : ''}
-      ${x.paid ? '<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\'' + encPay + '\')))">Reimp. Pagto</button>' : ''}
-      ${x.paid ? '<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\'' + x.code + '\')">Retirar Pago</button>' : ''}
-      <button class="btn btn-ghost btn-sm" onclick="printPickupSlips(JSON.parse(decodeURIComponent('${encDoc}')))">Reimprimir</button>
-      <button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>
-    </div>
-  </div>`;
-}).join('');
+    const urgent=isUrgentRx(x);
+    const encDoc=encodeURIComponent(JSON.stringify(x));
+    return '<div class="pu-item'+(urgent?' urgent':'')+'">' +
+      '<div>' +
+        '<div class="pu-code">'+x.code+(x.rx?' <span style="color:#c0392b;font-size:12px">RX</span>':'')+'</div>' +
+        '<div class="pu-meta">Op. '+x.op+' &nbsp;&nbsp; '+fmtDate(x.date)+' &nbsp;&nbsp; '+parseFloat(x.value).toFixed(2)+' EUR &nbsp;&nbsp; '+x.ptype+'</div>' +
+        '<div class="pu-meta">Criado em '+fmtDT(x.createdAtISO)+'</div>' +
+        (urgent?'<div class="alert-rx">Atencao! Pick-up com medicamentos RX registados - avaliar com urgencia</div>':'') +
+      '</div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        statePill(x.status) +
+        (!x.paid?'<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.code+'\')">Pagamento</button>':'') +
+        (x.paid?'<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\''+encDoc+'\')))">Reimp. Pagto</button>':'') +
+        (x.paid?'<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\''+x.code+'\')">Retirar Pago</button>':'') +
+        '<button class="btn btn-ghost btn-sm" onclick="printPickupSlips(JSON.parse(decodeURIComponent(\''+encDoc+'\')))">Reimprimir</button>' +
+        '<button class="btn btn-danger btn-sm" onclick="openAnulModal(\''+x.code+'\')">Anular</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
 
 function renderLastDelivered(all){
   const del=all.filter(x=>x.delivered).slice(0,20);
   const el=document.getElementById('lastDelivered');
-  if(!del.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">Sem entregues.</div>';return;}
-  el.innerHTML=del.map(x=>`
-    <div class="pu-item">
-      <div>
-        <div class="pu-code">${x.code}</div>
-        <div class="pu-meta">Op. ${x.op} &nbsp;·&nbsp; Entregue por ${x.deliveredBy||'-'}</div>
-        <div class="pu-meta">Data entrega: ${fmtDT(x.deliveredAt)}</div>
-      </div>
-      <span class="pill pill-ent">Entregue</span>
-    </div>`).join('');
+  if(!del.length){
+    el.innerHTML='<div style="color:var(--muted);font-size:13px">Sem entregues.</div>';
+    return;
+  }
+  el.innerHTML=del.map(x=>
+    '<div class="pu-item">' +
+      '<div>' +
+        '<div class="pu-code">'+x.code+'</div>' +
+        '<div class="pu-meta">Op. '+x.op+' &nbsp;&nbsp; Entregue por '+(x.deliveredBy||'-')+'</div>' +
+        '<div class="pu-meta">Data entrega: '+fmtDT(x.deliveredAt)+'</div>' +
+      '</div>' +
+      '<span class="pill pill-ent">Entregue</span>' +
+    '</div>'
+  ).join('');
 }
 
 function renderGestao(all){
