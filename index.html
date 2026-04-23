@@ -553,48 +553,40 @@ async function printDeliverySlip(doc){
 // Print payment receipt
 async function printPaymentReceipt(doc) {
   const bcPNG = await makeBarcodePNG(doc.code, 350);
-  const win = window.open('', 'blank', 'width=340,height=500');
   const { paper, bodyWidth, slipWidth, bcWidth, feedStr, lineH } = getPrintCSS();
-  win.document.write(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="UTF-8">
-      <style>
-        @page { size: ${paper} auto; margin: 2mm; }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; width: ${bodyWidth}; background: #fff; line-height: ${lineH}; }
-        .slip { width: ${slipWidth}; padding: 2mm; }
-        .logo { text-align: center; font-size: 10pt; font-weight: bold; margin-bottom: 1mm; }
-        .sub { text-align: center; font-size: 7pt; margin-bottom: 2mm; }
-        .title { text-align: center; font-size: 10pt; font-weight: bold; border: 1px solid #000; padding: 1mm; margin-bottom: 1mm; }
-        .code-line { text-align: center; font-size: 14pt; font-weight: bold; margin: 1mm 0; }
-        .bc-img { display: block; width: ${bcWidth}; margin: 1mm auto; }
-        hr { border: none; border-top: 1px dashed #000; margin: 1.5mm 0; }
-        .row { display: flex; justify-content: space-between; font-size: 8pt; margin-bottom: 1mm; }
-        .stamp { text-align: center; font-size: 12pt; font-weight: bold; letter-spacing: 2px; border: 2px solid #000; padding: 2mm; margin: 2mm 0; background: #fff4d9; }
-        ${feedStr}
-      </style>
-    </head>
-    <body>
-      <div class="slip">
-        <div class="logo">FARMACIA DA LIGA</div>
-        <div class="sub">Vila Nova de Gaia</div>
-        <div class="title">COMPROVATIVO DE PAGAMENTO</div>
-        <div class="code-line">${doc.code}</div>
-        <img class="bc-img" src="${bcPNG}">
-        <hr>
-        <div class="row"><span>Operador Pagto:</span><b>${doc.payOp}</b></div>
-        <div class="row"><span>Data/Hora:</span><b>${fmtDT(doc.payAt)}</b></div>
-        <div class="row"><span>Método:</span><b>${doc.payMethod}</b></div>
-        <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
-        <hr>
-        <div class="stamp">PAGO</div>
-      </div>
-      <script>window.onload = () => window.print();</script>
-    </body>
-    </html>
-  `);
+  const win = window.open('', '_blank', 'width=340,height=500');
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>'
+    + '@page{size:' + paper + ' auto;margin:2mm}'
+    + '*{box-sizing:border-box;margin:0;padding:0}'
+    + 'body{font-family:Arial,sans-serif;font-size:9pt;color:#000;width:' + bodyWidth + ';background:#fff;line-height:' + lineH + '}'
+    + '.slip{width:' + slipWidth + ';padding:2mm}'
+    + '.logo{text-align:center;font-size:10pt;font-weight:bold;margin-bottom:1mm}'
+    + '.sub{text-align:center;font-size:7pt;margin-bottom:2mm}'
+    + '.title{text-align:center;font-size:10pt;font-weight:bold;border:1px solid #000;padding:1mm;margin-bottom:1mm}'
+    + '.code-line{text-align:center;font-size:14pt;font-weight:bold;margin:1mm 0}'
+    + '.bc-img{display:block;width:' + bcWidth + ';margin:1mm auto}'
+    + 'hr{border:none;border-top:1px dashed #000;margin:1.5mm 0}'
+    + '.row{display:flex;justify-content:space-between;font-size:8pt;margin-bottom:1mm}'
+    + '.stamp{text-align:center;font-size:12pt;font-weight:bold;letter-spacing:2px;border:2px solid #000;padding:2mm;margin:2mm 0;background:#fff4d9}'
+    + feedStr
+    + '</style></head><body>'
+    + '<div class="slip">'
+    + '<div class="logo">FARMACIA DA LIGA</div>'
+    + '<div class="sub">Vila Nova de Gaia</div>'
+    + '<div class="title">COMPROVATIVO DE PAGAMENTO</div>'
+    + '<div class="code-line">' + doc.code + '</div>'
+    + '<img class="bc-img" src="' + bcPNG + '">'
+    + '<hr>'
+    + '<div class="row"><span>Operador Pagto:</span><b>' + doc.payOp + '</b></div>'
+    + '<div class="row"><span>Data/Hora:</span><b>' + fmtDT(doc.payAt) + '</b></div>'
+    + '<div class="row"><span>M\u00e9todo:</span><b>' + doc.payMethod + '</b></div>'
+    + '<div class="row"><span>Valor:</span><b>' + parseFloat(doc.value).toFixed(2) + ' EUR</b></div>'
+    + '<hr>'
+    + '<div class="stamp">PAGO</div>'
+    + '</div>'
+    + '<script>window.onload=function(){window.print();}<\/script>'
+    + '</body></html>';
+  win.document.write(html);
   win.document.close();
 }
 function getOtherLocs(ptype,currentLabel){
@@ -687,18 +679,21 @@ document.getElementById('btnRePrint').onclick=()=>{if(lastDispensed)printDeliver
 
 // ── Payment ────────────────────────────────────────────────
 window.openPayModal=(code)=>{currentPayCode=code;document.getElementById('payMsg').textContent='';openModal('modalPagamento');};
-async function confirmPayment(){
-  const op=document.getElementById('payOp').value.trim();
-  const method=document.getElementById('payMethod').value;
-  if(!op||!method){document.getElementById('payMsg').textContent='Preencha todos os campos.';return;}
-  await PICKUPS.doc(currentPayCode).update({paid:true,status:'Pago',payOp:String(op),payMethod:method,payAt:new Date().toISOString()});
+async function confirmPayment() {
+  const op = document.getElementById('payOp').value.trim();
+  const method = document.getElementById('payMethod').value;
+  if (!op || !method) { document.getElementById('payMsg').textContent = 'Preencha todos os campos.'; return; }
+  await PICKUPS.doc(currentPayCode).update({
+    paid: true, status: 'Pago',
+    payOp: String(op), payMethod: method,
+    payAt: new Date().toISOString()
+  });
   closeModal('modalPagamento');
   loadAll();
   const snap = await PICKUPS.doc(currentPayCode).get();
-const doc = { ...snap.data(), id: snap.id };
-printPaymentReceipt(doc);
+  const doc = { ...snap.data(), id: snap.id };
+  printPaymentReceipt(doc);
 }
-
 // ── Unpay ──────────────────────────────────────────────────
 window.openUnpayModal=(code)=>{currentUnpayCode=code;document.getElementById('unpayMsg').textContent='';document.getElementById('unpayOp').value='';document.getElementById('unpayJust').value='';openModal('modalUnpay');};
 async function confirmUnpay(){
@@ -764,26 +759,27 @@ function renderPending(all){
   const el=document.getElementById('pendingList');
   if(!items.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Sem pick-ups pendentes.</div>';return;}
   el.innerHTML=items.map(x=>{
-    const urgent=isUrgentRx(x);
-    const encDoc=encodeURIComponent(JSON.stringify(x));
-    return `<div class="pu-item${urgent?' urgent':''}">
-      <div>
-        <div class="pu-code">${x.code}${x.rx?' <span style="color:#c0392b;font-size:12px">RX</span>':''}</div>
-        <div class="pu-meta">Op. ${x.op} &nbsp;·&nbsp; ${fmtDate(x.date)} &nbsp;·&nbsp; ${parseFloat(x.value).toFixed(2)} EUR &nbsp;·&nbsp; ${x.ptype}</div>
-        <div class="pu-meta">Criado em: ${fmtDT(x.createdAtISO)}</div>
-        ${urgent?`<div class="alert-rx">Atencao! Pick-up com medicamentos RX registados - avaliar com urgencia</div>`:''}
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        ${statePill(x.status)}
-        ${!x.paid?`<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagamento</button>`:''}
-        x.paid ? button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(x))}')))" title="Reimprimir Pagto">Reimp. Pagto</button : ''
-        ${x.paid?`<button class="btn btn-ghost btn-sm" onclick="openUnpayModal('${x.code}')">Retirar Pago</button>`:''}
-        <button class="btn btn-ghost btn-sm" onclick='printPickupSlips(JSON.parse(decodeURIComponent("${encDoc}")))'>Reimprimir</button>
-        <button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>
-      </div>
-    </div>`;
-  }).join('');
-}
+   el.innerHTML = items.map(x => {
+  const urgent = isUrgentRx(x);
+  const encDoc = encodeURIComponent(JSON.stringify(x));
+  const encPay = encodeURIComponent(JSON.stringify(x));
+  return `<div class="pu-item${urgent ? ' urgent' : ''}">
+    <div>
+      <div class="pu-code">${x.code}${x.rx ? ' <span style="color:#c0392b;font-size:12px">RX</span>' : ''}</div>
+      <div class="pu-meta">Op. ${x.op} &nbsp;&nbsp; ${fmtDate(x.date)} &nbsp;&nbsp; ${parseFloat(x.value).toFixed(2)} EUR &nbsp;&nbsp; ${x.ptype}</div>
+      <div class="pu-meta">Criado em ${fmtDT(x.createdAtISO)}</div>
+      ${urgent ? '<div class="alert-rx">Atencao! Pick-up com medicamentos RX registados - avaliar com urgencia</div>' : ''}
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      ${statePill(x.status)}
+      ${!x.paid ? '<button class="btn btn-ghost btn-sm" onclick="openPayModal(\'' + x.code + '\')">Pagamento</button>' : ''}
+      ${x.paid ? '<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\'' + encPay + '\')))">Reimp. Pagto</button>' : ''}
+      ${x.paid ? '<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\'' + x.code + '\')">Retirar Pago</button>' : ''}
+      <button class="btn btn-ghost btn-sm" onclick="printPickupSlips(JSON.parse(decodeURIComponent('${encDoc}')))">Reimprimir</button>
+      <button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>
+    </div>
+  </div>`;
+}).join('');
 
 function renderLastDelivered(all){
   const del=all.filter(x=>x.delivered).slice(0,20);
@@ -811,41 +807,44 @@ function renderGestao(all){
   document.getElementById('k4').textContent=filtered.length;
   document.getElementById('tableBody').innerHTML=filtered.map(x=>{
     const urgent=isUrgentRx(x);
-    return `<tr${urgent?' style="background:#fff0f0"':''}>
-      <td><strong>${x.code}</strong>${x.rx?' <span style="color:#c0392b;font-size:10px;font-weight:800">RX</span>':''}${urgent?`<br><span style="color:#c0392b;font-size:10px;font-weight:700">RX - urgente</span>`:''}
-      </td>
-      <td>${x.op}</td>
-      <td>${fmtDate(x.date)}<br><span style="font-size:10px;color:var(--muted)">${fmtDT(x.createdAtISO)}</span></td>
-      <td>${parseFloat(x.value).toFixed(2)} EUR</td>
-      <td style="font-size:11px">${x.ptype}</td>
-      <td style="text-align:center">${x.rx?'<span style="color:#c0392b;font-weight:800">Sim</span>':'Nao'}</td>
-      <td>${statePill(x.status)}</td>
-      <td style="font-size:11px">${x.payOp||'-'}<br>${x.payMethod||''}</td>
-      <td style="font-size:11px">${x.payAt?fmtDT(x.payAt):'-'}</td>
-      <td style="font-size:11px">${x.deliveredBy||'-'}</td>
-      <td style="font-size:11px">${x.deliveredAt?fmtDT(x.deliveredAt):'-'}</td>
-      <td style="white-space:nowrap">
-        ${!x.paid&&!x.canceled?`<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagar</button> `:''}
-        x.paid ? button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(x))}')))" title="Reimprimir Pagto">Reimp. Pagto</button : ''
-        ${x.paid&&!x.canceled&&!x.delivered?`<button class="btn btn-ghost btn-sm" onclick="openUnpayModal('${x.code}')">Retirar Pago</button> `:''}
-        ${!x.canceled?`<button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>`:''}
-      </td>
-    </tr>`;
+    const encX=encodeURIComponent(JSON.stringify(x));
+    return '<tr'+(urgent?' style="background:#fff0f0"':'')+'>'+
+      '<td><strong>'+x.code+'</strong>'+(x.rx?' <span style="color:#c0392b;font-size:10px;font-weight:800">RX</span>':'')+(urgent?'<br><span style="color:#c0392b;font-size:10px;font-weight:700">RX - urgente</span>':'')+'</td>'+
+      '<td>'+x.op+'</td>'+
+      '<td>'+fmtDate(x.date)+'<br><span style="font-size:10px;color:var(--muted)">'+fmtDT(x.createdAtISO)+'</span></td>'+
+      '<td>'+parseFloat(x.value).toFixed(2)+' EUR</td>'+
+      '<td style="font-size:11px">'+x.ptype+'</td>'+
+      '<td style="text-align:center">'+(x.rx?'<span style="color:#c0392b;font-weight:800">Sim</span>':'Nao')+'</td>'+
+      '<td>'+statePill(x.status)+'</td>'+
+      '<td style="font-size:11px">'+(x.payOp||'-')+'<br>'+(x.payMethod||'')+'</td>'+
+      '<td style="font-size:11px">'+(x.payAt?fmtDT(x.payAt):'-')+'</td>'+
+      '<td style="font-size:11px">'+(x.deliveredBy||'-')+'</td>'+
+      '<td style="font-size:11px">'+(x.deliveredAt?fmtDT(x.deliveredAt):'-')+'</td>'+
+      '<td style="white-space:nowrap">'+
+        (!x.paid&&!x.canceled?'<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.code+'\')">Pagar</button> ':'')+
+        (x.paid?'<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\''+encX+'\')))">Reimp. Pagto</button> ':'')+
+        (x.paid&&!x.canceled&&!x.delivered?'<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\''+x.code+'\')">Retirar Pago</button> ':'')+
+        (!x.canceled?'<button class="btn btn-danger btn-sm" onclick="openAnulModal(\''+x.code+'\')">Anular</button>':'')+
+      '</td>'+
+    '</tr>';
   }).join('')||'<tr><td colspan="12" style="color:var(--muted)">Sem resultados</td></tr>';
+
   const canceled=all.filter(x=>x.canceled);
   document.getElementById('canceledList').innerHTML=canceled.length
-    ?canceled.map(x=>`<div class="pu-item">
-        <div>
-          <div class="pu-code">${x.code}</div>
-          <div class="pu-meta">Op. ${x.op} &nbsp;·&nbsp; ${fmtDate(x.date)} &nbsp;·&nbsp; Criado: ${fmtDT(x.createdAtISO)}</div>
-          <div class="pu-meta">Anulado por: <b>${x.canceledBy||'-'}</b> &nbsp;·&nbsp; ${fmtDT(x.canceledAt)}</div>
-          <div class="pu-meta" style="color:#b03030">Motivo: ${x.cancelJust||'-'}</div>
-        </div>
-        <span class="pill pill-anul">Anulado</span>
-      </div>`).join('')
+    ?canceled.map(x=>
+      '<div class="pu-item">'+
+        '<div>'+
+          '<div class="pu-code">'+x.code+'</div>'+
+          '<div class="pu-meta">Op. '+x.op+' &nbsp;&middot;&nbsp; '+fmtDate(x.date)+' &nbsp;&middot;&nbsp; Criado: '+fmtDT(x.createdAtISO)+'</div>'+
+          '<div class="pu-meta">Anulado por: <b>'+(x.canceledBy||'-')+'</b> &nbsp;&middot;&nbsp; '+fmtDT(x.canceledAt)+'</div>'+
+          '<div class="pu-meta" style="color:#b03030">Motivo: '+(x.cancelJust||'-')+'</div>'+
+        '</div>'+
+        '<span class="pill pill-anul">Anulado</span>'+
+      '</div>'
+    ).join('')
     :'<div style="color:var(--muted);font-size:13px">Sem anulacoes.</div>';
 }
-
+    
 function applyFilters(all){
   const fs=document.getElementById('f_start').value,fe=document.getElementById('f_end').value,
     code=document.getElementById('f_code').value.trim().toUpperCase(),
