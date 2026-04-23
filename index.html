@@ -550,7 +550,53 @@ async function printDeliverySlip(doc){
 </body></html>`);
   win.document.close();
 }
-
+// Print payment receipt
+async function printPaymentReceipt(doc) {
+  const bcPNG = await makeBarcodePNG(doc.code, 350);
+  const win = window.open('', 'blank', 'width=340,height=500');
+  const { paper, bodyWidth, slipWidth, bcWidth, feedStr, lineH } = getPrintCSS();
+  win.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <style>
+        @page { size: ${paper} auto; margin: 2mm; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; font-size: 9pt; color: #000; width: ${bodyWidth}; background: #fff; line-height: ${lineH}; }
+        .slip { width: ${slipWidth}; padding: 2mm; }
+        .logo { text-align: center; font-size: 10pt; font-weight: bold; margin-bottom: 1mm; }
+        .sub { text-align: center; font-size: 7pt; margin-bottom: 2mm; }
+        .title { text-align: center; font-size: 10pt; font-weight: bold; border: 1px solid #000; padding: 1mm; margin-bottom: 1mm; }
+        .code-line { text-align: center; font-size: 14pt; font-weight: bold; margin: 1mm 0; }
+        .bc-img { display: block; width: ${bcWidth}; margin: 1mm auto; }
+        hr { border: none; border-top: 1px dashed #000; margin: 1.5mm 0; }
+        .row { display: flex; justify-content: space-between; font-size: 8pt; margin-bottom: 1mm; }
+        .stamp { text-align: center; font-size: 12pt; font-weight: bold; letter-spacing: 2px; border: 2px solid #000; padding: 2mm; margin: 2mm 0; background: #fff4d9; }
+        ${feedStr}
+      </style>
+    </head>
+    <body>
+      <div class="slip">
+        <div class="logo">FARMACIA DA LIGA</div>
+        <div class="sub">Vila Nova de Gaia</div>
+        <div class="title">COMPROVATIVO DE PAGAMENTO</div>
+        <div class="code-line">${doc.code}</div>
+        <img class="bc-img" src="${bcPNG}">
+        <hr>
+        <div class="row"><span>Operador Pagto:</span><b>${doc.payOp}</b></div>
+        <div class="row"><span>Data/Hora:</span><b>${fmtDT(doc.payAt)}</b></div>
+        <div class="row"><span>Método:</span><b>${doc.payMethod}</b></div>
+        <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
+        <hr>
+        <div class="stamp">PAGO</div>
+      </div>
+      <script>window.onload = () => window.print();</script>
+    </body>
+    </html>
+  `);
+  win.document.close();
+}
 function getOtherLocs(ptype,currentLabel){
   const all=getReceiptTypes(ptype).filter(l=>!l.includes('Duplicado')&&l!==currentLabel);
   return all;
@@ -648,6 +694,9 @@ async function confirmPayment(){
   await PICKUPS.doc(currentPayCode).update({paid:true,status:'Pago',payOp:String(op),payMethod:method,payAt:new Date().toISOString()});
   closeModal('modalPagamento');
   loadAll();
+  const snap = await PICKUPS.doc(currentPayCode).get();
+const doc = { ...snap.data(), id: snap.id };
+printPaymentReceipt(doc);
 }
 
 // ── Unpay ──────────────────────────────────────────────────
@@ -727,6 +776,7 @@ function renderPending(all){
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${statePill(x.status)}
         ${!x.paid?`<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagamento</button>`:''}
+        x.paid ? button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(x))}')))" title="Reimprimir Pagto">Reimp. Pagto</button : ''
         ${x.paid?`<button class="btn btn-ghost btn-sm" onclick="openUnpayModal('${x.code}')">Retirar Pago</button>`:''}
         <button class="btn btn-ghost btn-sm" onclick='printPickupSlips(JSON.parse(decodeURIComponent("${encDoc}")))'>Reimprimir</button>
         <button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>
@@ -776,6 +826,7 @@ function renderGestao(all){
       <td style="font-size:11px">${x.deliveredAt?fmtDT(x.deliveredAt):'-'}</td>
       <td style="white-space:nowrap">
         ${!x.paid&&!x.canceled?`<button class="btn btn-ghost btn-sm" onclick="openPayModal('${x.code}')">Pagar</button> `:''}
+        x.paid ? button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent('${encodeURIComponent(JSON.stringify(x))}')))" title="Reimprimir Pagto">Reimp. Pagto</button : ''
         ${x.paid&&!x.canceled&&!x.delivered?`<button class="btn btn-ghost btn-sm" onclick="openUnpayModal('${x.code}')">Retirar Pago</button> `:''}
         ${!x.canceled?`<button class="btn btn-danger btn-sm" onclick="openAnulModal('${x.code}')">Anular</button>`:''}
       </td>
