@@ -213,6 +213,21 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR VALOR -->
+<div class="overlay" id="modalEditValue">
+  <div class="modal">
+    <h3>&#9999;&#65039; Editar Valor do Pick-up</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:10px">So e possivel editar o valor antes do pagamento.</p>
+    <label>Operador (no)</label><input id="editValueOp" type="number" placeholder="No do colaborador" autocomplete="off">
+    <label>Novo Valor (EUR)</label><input id="editValueInput" type="number" step="0.01" placeholder="0.00" autocomplete="off">
+    <div class="split">
+      <button class="btn btn-primary" style="flex:1" onclick="confirmEditValue()">Guardar</button>
+      <button class="btn btn-ghost" style="flex:1" onclick="closeModal('modalEditValue')">Cancelar</button>
+    </div>
+    <div id="editValueMsg" style="margin-top:8px;font-size:12px;color:#b03030"></div>
+  </div>
+</div>
+
 <header>
   <div class="logo">
     <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="rgba(255,255,255,.13)"/><path d="M16 6v20M6 16h20" stroke="#fff" stroke-width="3" stroke-linecap="round"/></svg>
@@ -240,9 +255,9 @@
       <div class="card">
         <h2>Novo Pick-up</h2>
         <div class="row3">
-          <div><label>Operador (no)</label><input id="c_op" type="number" placeholder="ex: 64"></div>
-          <div><label>Data</label><input id="c_date" type="date"></div>
-          <div><label>Valor (EUR)</label><input id="c_value" type="number" step="0.01" placeholder="0.00"></div>
+          <div><label>Operador (no)</label><input id="c_op" type="number" placeholder="ex: 64" autocomplete="off"></div>
+          <div><label>Data</label><input id="c_date" type="date" autocomplete="off"></div>
+          <div><label>Valor (EUR)</label><input id="c_value" type="number" step="0.01" placeholder="0.00" autocomplete="off"></div>
         </div>
         <label>Tipo de Produtos</label>
         <select id="c_type">
@@ -257,6 +272,12 @@
           <input type="checkbox" id="c_rx">
           <label for="c_rx">Tem medicamentos sujeitos a receita medica (RX)?</label>
         </div>
+        <div class="check-row" style="margin-top:10px">
+          <input type="checkbox" id="c_domicilio">
+          <label for="c_domicilio">&#127968; Entrega ao Domicilio?</label>
+        </div>
+        <label style="margin-top:12px">Nome do Cliente <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(opcional)</span></label>
+        <input id="c_nome" type="text" placeholder="Nome do cliente (opcional)" autocomplete="off">
         <div class="split">
           <button class="btn btn-primary" id="btnCreate">Criar Pick-up</button>
         </div>
@@ -405,11 +426,34 @@ const fmtDT=s=>{if(!s)return '-';const d=new Date(s);return d.toLocaleString('pt
 const shortDate=s=>{if(!s)return '';const[y,m,dv]=s.split('-');return `${dv}${m}`;};
 const daysDiff=(dateStr)=>{const d=new Date(dateStr);const now=new Date();return Math.floor((now-d)/(1000*60*60*24));};
 
-let gestaoUnlocked=false,currentPayCode=null,currentAnulCode=null,currentUnpayCode=null,lastDispensed=null;
+let gestaoUnlocked=false,currentPayCode=null,currentAnulCode=null,currentUnpayCode=null,lastDispensed=null,currentEditValueCode=null;
 window._filteredData=[];
 
 document.getElementById('headerDate').textContent=new Date().toLocaleString('pt-PT');
 document.getElementById('c_date').value=todayISO();
+
+// ── Edit Value ────────────────────────────────────────────
+window.openEditValueModal=(code)=>{
+  currentEditValueCode=code;
+  document.getElementById('editValueMsg').textContent='';
+  document.getElementById('editValueOp').value='';
+  document.getElementById('editValueInput').value='';
+  openModal('modalEditValue');
+};
+async function confirmEditValue(){
+  const op=document.getElementById('editValueOp').value.trim();
+  const val=parseFloat(document.getElementById('editValueInput').value);
+  if(!op){document.getElementById('editValueMsg').textContent='Indique o operador.';return;}
+  if(isNaN(val)||val<0){document.getElementById('editValueMsg').textContent='Valor invalido.';return;}
+  const snap=await PICKUPS.doc(currentEditValueCode).get();
+  if(!snap.exists)return;
+  const data=snap.data();
+  if(data.paid){document.getElementById('editValueMsg').textContent='Nao e possivel editar — pick-up ja foi pago.';return;}
+  if(data.canceled){document.getElementById('editValueMsg').textContent='Nao e possivel editar — pick-up anulado.';return;}
+  await PICKUPS.doc(currentEditValueCode).update({value:val,editedBy:String(op),editedAt:new Date().toISOString()});
+  closeModal('modalEditValue');
+  loadAll();
+}
 
 // ── Count ─────────────────────────────────────────────────
 async function countForOpDay(op,date){
@@ -433,12 +477,14 @@ document.getElementById('btnCreate').onclick=async()=>{
   const ptype=document.getElementById('c_type').value;
   const rxCheck=document.getElementById('c_rx').checked;
   const rx=rxCheck||ptype.includes('PSI');
+  const domicilio=document.getElementById('c_domicilio').checked;
+  const nome=document.getElementById('c_nome').value.trim();
   if(!op)return showMsg('createMsg','Indique o operador.','err');
   document.getElementById('btnCreate').disabled=true;
   try{
     const count=await countForOpDay(op,date);
     const code=buildCode(op,count,date,ptype);
-    const doc={op:String(op),date,value,ptype,rx,code,count,
+    const doc={op:String(op),date,value,ptype,rx,domicilio,nome,code,count,
       status:'Pendente',paid:false,canceled:false,delivered:false,
       payMethod:null,payOp:null,payAt:null,
       deliveredBy:null,deliveredAt:null,
@@ -448,6 +494,14 @@ document.getElementById('btnCreate').onclick=async()=>{
     await PICKUPS.doc(code).set(doc);
     showMsg('createMsg',`Criado: <strong>${code}</strong>`,'ok');
     renderPreview(doc);
+    // Limpar campos apos criacao
+    document.getElementById('c_op').value='';
+    document.getElementById('c_date').value='';
+    document.getElementById('c_value').value='';
+    document.getElementById('c_type').value='AMB';
+    document.getElementById('c_rx').checked=false;
+    document.getElementById('c_domicilio').checked=false;
+    document.getElementById('c_nome').value='';
     loadAll();
   }catch(e){showMsg('createMsg','Erro: '+e.message,'err');}
   document.getElementById('btnCreate').disabled=false;
@@ -461,7 +515,8 @@ function renderPreview(doc){
   el.innerHTML=`
     <div style="margin-bottom:10px">
       <div style="font-size:26px;font-weight:800;color:var(--green);letter-spacing:1px">${doc.code}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Op. ${doc.op} &nbsp;·&nbsp; ${fmtDate(doc.date)} &nbsp;·&nbsp; ${parseFloat(doc.value).toFixed(2)} EUR &nbsp;·&nbsp; ${doc.ptype} ${doc.rx?'&nbsp;·&nbsp;<strong style="color:#c0392b">RX</strong>':''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Op. ${doc.op} &nbsp;·&nbsp; ${fmtDate(doc.date)} &nbsp;·&nbsp; ${parseFloat(doc.value).toFixed(2)} EUR &nbsp;·&nbsp; ${doc.ptype} ${doc.rx?'&nbsp;·&nbsp;<strong style="color:#c0392b">RX</strong>':''} ${doc.domicilio?'&nbsp;·&nbsp;<strong style="color:#1a5c38">&#127968; DOMICILIO</strong>':''}</div>
+      ${doc.nome?`<div style="font-size:12px;color:var(--text);margin-top:2px"><strong>Cliente:</strong> ${doc.nome}</div>`:''}
     </div>
     <canvas id="prevBarcode" style="max-width:260px;width:100%"></canvas>
     <div class="split">
@@ -533,12 +588,14 @@ async function printDeliverySlip(doc){
   <div class="codeline">${doc.code}</div>
   <img class="bcimg" src="${bcPNG}">
   <hr>
+  ${doc.nome?`<div class="row"><span>Cliente:</span><b>${doc.nome}</b></div>`:''}
   <div class="row"><span>Operador Criacao:</span><b>${doc.op}</b></div>
   <div class="row"><span>Dispensado por:</span><b>${doc.deliveredBy}</b></div>
   <div class="row"><span>Data/Hora:</span><b>${fmtDT(doc.deliveredAt)}</b></div>
   <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
   <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
   ${doc.rx?`<div class="row"><span>RX:</span><b>Sim - Receita Medica</b></div>`:''}
+  ${doc.domicilio?`<div class="row" style="background:#e8f5ed;padding:1.5mm"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>`:''}
   <hr>
   <div class="stamp">ENTREGUE</div>
   <div class="sig-label">Data de Entrega:</div>
@@ -581,6 +638,8 @@ async function printPaymentReceipt(doc) {
     + '<div class="row"><span>Data/Hora:</span><b>' + fmtDT(doc.payAt) + '</b></div>'
     + '<div class="row"><span>M\u00e9todo:</span><b>' + doc.payMethod + '</b></div>'
     + '<div class="row"><span>Valor:</span><b>' + parseFloat(doc.value).toFixed(2) + ' EUR</b></div>'
+    + (doc.domicilio ? '<div class="row" style="background:#e8f5ed;padding:1.5mm"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>' : '')
+    + (doc.nome ? '<div class="row"><span>Cliente:</span><b>' + doc.nome + '</b></div>' : '')
     + '<hr>'
     + '<div class="stamp">PAGO</div>'
     + '</div>'
@@ -605,10 +664,12 @@ function buildSlipHTML(doc, label, bcPNG){
   <div class="codeline">${doc.code}</div>
   <img class="bcimg" src="${bcPNG}">
   <hr>
+  ${doc.nome?`<div class="row"><span>Cliente:</span><b>${doc.nome}</b></div>`:''}
   <div class="row"><span>Operador:</span><b>${doc.op}</b></div>
   <div class="row"><span>Data:</span><b>${fmtDate(doc.date)}</b></div>
   <div class="row"><span>Valor:</span><b>${parseFloat(doc.value).toFixed(2)} EUR</b></div>
   <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
+  ${doc.domicilio?`<div class="row" style="background:#e8f5ed;padding:1.5mm;border-radius:3px"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>`:''}
   ${locsNote}
   <hr>
   <div class="pago-section">
@@ -767,12 +828,14 @@ function renderPending(all){
     return '<div class="pu-item'+(urgent?' urgent':'')+'">' +
       '<div>' +
         '<div class="pu-code">'+x.code+(x.rx?' <span style="color:#c0392b;font-size:12px">RX</span>':'')+'</div>' +
-        '<div class="pu-meta">Op. '+x.op+' &nbsp;&nbsp; '+fmtDate(x.date)+' &nbsp;&nbsp; '+parseFloat(x.value).toFixed(2)+' EUR &nbsp;&nbsp; '+x.ptype+'</div>' +
+        '<div class="pu-meta">Op. '+x.op+' &nbsp;&nbsp; '+fmtDate(x.date)+' &nbsp;&nbsp; '+parseFloat(x.value).toFixed(2)+' EUR &nbsp;&nbsp; '+x.ptype+(x.domicilio?' &nbsp;&nbsp; <strong style="color:#116b30">&#127968; Domicilio</strong>':'')+'</div>' +
+        (x.nome?'<div class="pu-meta"><strong>Cliente:</strong> '+x.nome+'</div>':'')+
         '<div class="pu-meta">Criado em '+fmtDT(x.createdAtISO)+'</div>' +
         (urgent?'<div class="alert-rx">Atencao! Pick-up com medicamentos RX registados - avaliar com urgencia</div>':'') +
       '</div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
         statePill(x.status) +
+        (!x.paid?'<button class="btn btn-ghost btn-sm" onclick="openEditValueModal(\''+x.code+'\')">&#9999; Valor</button>':'')+
         (!x.paid?'<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.code+'\')">Pagamento</button>':'') +
         (x.paid?'<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\''+encDoc+'\')))">Reimp. Pagto</button>':'') +
         (x.paid?'<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\''+x.code+'\')">Retirar Pago</button>':'') +
@@ -827,6 +890,7 @@ function renderGestao(all){
       '<td style="font-size:11px">'+(x.deliveredBy||'-')+'</td>'+
       '<td style="font-size:11px">'+(x.deliveredAt?fmtDT(x.deliveredAt):'-')+'</td>'+
       '<td style="white-space:nowrap">'+
+        (!x.paid&&!x.canceled?'<button class="btn btn-ghost btn-sm" onclick="openEditValueModal(\''+x.code+'\')" title="Editar Valor">&#9999; Valor</button> ':'')+
         (!x.paid&&!x.canceled?'<button class="btn btn-ghost btn-sm" onclick="openPayModal(\''+x.code+'\')">Pagar</button> ':'')+
         (x.paid?'<button class="btn btn-ghost btn-sm" onclick="printPaymentReceipt(JSON.parse(decodeURIComponent(\''+encX+'\')))">Reimp. Pagto</button> ':'')+
         (x.paid&&!x.canceled&&!x.delivered?'<button class="btn btn-ghost btn-sm" onclick="openUnpayModal(\''+x.code+'\')">Retirar Pago</button> ':'')+
