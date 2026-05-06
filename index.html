@@ -487,8 +487,7 @@ document.getElementById('btnCreate').onclick=async()=>{
   if(!op)return showMsg('createMsg','Indique o operador.','err');
   document.getElementById('btnCreate').disabled=true;
   try{
-    const count=await countForOpDay(op,date);
-    const code=buildCode(op,count,date,ptype);
+const { code, count } = await generateUniqueCode(op, date, ptype);
     const doc={op:String(op),date,value,ptype,rx,domicilio,recOriginal,nome,code,count,
       status:'Pendente',paid:false,canceled:false,delivered:false,
       payMethod:null,payOp:null,payAt:null,
