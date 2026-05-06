@@ -264,9 +264,13 @@
           <option value="AMB">Temperatura Ambiente</option>
           <option value="FR">Frio</option>
           <option value="PSI">Psicotropicos</option>
+          <option value="PIM">PIM (Preparacao Individual da Medicacao)</option>
           <option value="FR_PSI">Frio + Psicotropicos</option>
           <option value="AMB_FR">Temperatura Ambiente + Frio</option>
           <option value="AMB_FR_PSI">Temperatura Ambiente + Frio + Psicotropicos</option>
+          <option value="PIM_FR">PIM + Frio</option>
+          <option value="PIM_PSI">PIM + Psicotropicos</option>
+          <option value="PIM_AMB">PIM + Temperatura Ambiente</option>
         </select>
         <div class="check-row" style="margin-top:14px">
           <input type="checkbox" id="c_rx">
@@ -279,10 +283,6 @@
         <div class="check-row" style="margin-top:10px">
           <input type="checkbox" id="c_rec_original">
           <label for="c_rec_original">Obrigatorio apresentar Receita Medica original</label>
-        </div>
-        <div class="check-row" style="margin-top:10px">
-          <input type="checkbox" id="c_pim">
-          <label for="c_pim">&#128203; PIM (Protocolo de Informacao ao Medicamento)</label>
         </div>
         <label style="margin-top:12px">Nome do Cliente <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(opcional)</span></label>
         <input id="c_nome" type="text" placeholder="Nome do cliente (opcional)" autocomplete="off">
@@ -468,16 +468,31 @@ function buildCode(op,count,date,ptype){
   const letter=ALPHA[(count-1)%26];
   const d=shortDate(date);
   let mid=letter;
+  if(ptype.includes('PIM'))mid+='PIM';
   if(ptype.includes('FR'))mid+='FR';
   if(ptype.includes('PSI'))mid+='PSI';
   return `${op}${mid}${d}`;
 }
 async function generateUniqueCode(op,date,ptype){
+  // Buscar todos os pick-ups do operador neste dia
+  const snap=await PICKUPS.where('op','==',String(op)).where('date','==',date).get();
+  const prefix=String(op);
+  // Extrair a letra usada diretamente do ID do documento — funciona mesmo em docs antigos sem campo count
+  const usedCounts=new Set();
+  snap.forEach(docSnap=>{
+    const id=docSnap.id; // ex: 64AFR0605, 64APIM0605, 64A0605
+    const rest=id.slice(prefix.length); // ex: AFR0605, APIM0605, A0605
+    const letter=rest.charAt(0); // sempre o 1º char após o operador
+    const idx=ALPHA.indexOf(letter);
+    if(idx>=0) usedCounts.add(idx+1);
+  });
   let count=1;
   while(count<=26){
-    const code=buildCode(op,count,date,ptype);
-    const snap=await PICKUPS.doc(code).get();
-    if(!snap.exists) return {code,count};
+    if(!usedCounts.has(count)){
+      const code=buildCode(op,count,date,ptype);
+      const existing=await PICKUPS.doc(code).get();
+      if(!existing.exists) return {code,count};
+    }
     count++;
   }
   throw new Error('Limite de 26 pick-ups por operador/dia atingido.');
@@ -493,13 +508,12 @@ document.getElementById('btnCreate').onclick=async()=>{
   const rx=rxCheck||ptype.includes('PSI');
   const domicilio=document.getElementById('c_domicilio').checked;
   const recOriginal=document.getElementById('c_rec_original').checked;
-  const pim=document.getElementById('c_pim').checked;
   const nome=document.getElementById('c_nome').value.trim();
   if(!op)return showMsg('createMsg','Indique o operador.','err');
   document.getElementById('btnCreate').disabled=true;
   try{
     const {code,count}=await generateUniqueCode(op,date,ptype);
-    const doc={op:String(op),date,value,ptype,rx,domicilio,recOriginal,pim,nome,code,count,
+    const doc={op:String(op),date,value,ptype,rx,domicilio,recOriginal,nome,code,count,
       status:'Pendente',paid:false,canceled:false,delivered:false,
       payMethod:null,payOp:null,payAt:null,
       deliveredBy:null,deliveredAt:null,
@@ -517,7 +531,6 @@ document.getElementById('btnCreate').onclick=async()=>{
     document.getElementById('c_rx').checked=false;
     document.getElementById('c_domicilio').checked=false;
     document.getElementById('c_rec_original').checked=false;
-    document.getElementById('c_pim').checked=false;
     document.getElementById('c_nome').value='';
     loadAll();
   }catch(e){showMsg('createMsg','Erro: '+e.message,'err');}
@@ -532,7 +545,7 @@ function renderPreview(doc){
   el.innerHTML=`
     <div style="margin-bottom:10px">
       <div style="font-size:26px;font-weight:800;color:var(--green);letter-spacing:1px">${doc.code}</div>
-      <div style="font-size:12px;color:var(--muted);margin-top:4px">Op. ${doc.op} &nbsp;·&nbsp; ${fmtDate(doc.date)} &nbsp;·&nbsp; ${parseFloat(doc.value).toFixed(2)} EUR &nbsp;·&nbsp; ${doc.ptype} ${doc.rx?'&nbsp;·&nbsp;<strong style="color:#c0392b">RX</strong>':''} ${doc.domicilio?'&nbsp;·&nbsp;<strong style="color:#1a5c38">&#127968; DOMICILIO</strong>':''} ${doc.recOriginal?'&nbsp;·&nbsp;<strong style="color:#8a6000">Receita original obrigatoria</strong>':''} ${doc.pim?'&nbsp;·&nbsp;<strong style="color:#6a0dad">&#128203; PIM</strong>':''}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Op. ${doc.op} &nbsp;·&nbsp; ${fmtDate(doc.date)} &nbsp;·&nbsp; ${parseFloat(doc.value).toFixed(2)} EUR &nbsp;·&nbsp; ${doc.ptype} ${doc.rx?'&nbsp;·&nbsp;<strong style="color:#c0392b">RX</strong>':''} ${doc.domicilio?'&nbsp;·&nbsp;<strong style="color:#1a5c38">&#127968; DOMICILIO</strong>':''} ${doc.recOriginal?'&nbsp;·&nbsp;<strong style="color:#8a6000">Receita original obrigatoria</strong>':''} ${doc.ptype&&doc.ptype.includes('PIM')?'&nbsp;·&nbsp;<strong style="color:#6a0dad">&#128203; PIM</strong>':''}</div>
       ${doc.nome?`<div style="font-size:12px;color:var(--text);margin-top:2px"><strong>Cliente:</strong> ${doc.nome}</div>`:''}
     </div>
     <canvas id="prevBarcode" style="max-width:260px;width:100%"></canvas>
@@ -548,9 +561,13 @@ function getReceiptTypes(ptype){
     case 'AMB':        return ['Temperatura Ambiente','Temperatura Ambiente - Duplicado'];
     case 'FR':         return ['Frio','Frio - Duplicado'];
     case 'PSI':        return ['Psicotropicos','Psicotropicos - Duplicado'];
+    case 'PIM':        return ['PIM - Preparacao Individual da Medicacao','PIM - Duplicado'];
     case 'FR_PSI':     return ['Frio','Psicotropicos','Frio + Psicotropicos - Duplicado'];
     case 'AMB_FR':     return ['Temperatura Ambiente','Frio (Guardar em Frigorifico)','Temperatura Ambiente + Frio - Duplicado'];
     case 'AMB_FR_PSI': return ['Temperatura Ambiente','Frio (Guardar em Frigorifico)','Psicotropicos','Temperatura Ambiente + Frio + Psicotropicos - Duplicado'];
+    case 'PIM_FR':     return ['PIM - Preparacao Individual da Medicacao','Frio (Guardar em Frigorifico)','PIM + Frio - Duplicado'];
+    case 'PIM_PSI':    return ['PIM - Preparacao Individual da Medicacao','Psicotropicos','PIM + Psicotropicos - Duplicado'];
+    case 'PIM_AMB':    return ['PIM - Preparacao Individual da Medicacao','Temperatura Ambiente','PIM + Temperatura Ambiente - Duplicado'];
     default:           return ['Pick-up','Duplicado'];
   }
 }
@@ -614,7 +631,6 @@ async function printDeliverySlip(doc){
   ${doc.rx?`<div class="row"><span>RX:</span><b>Sim - Receita Medica</b></div>`:''}
   ${doc.domicilio?`<div class="row" style="background:#e8f5ed;padding:1.5mm"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>`:''}
   ${doc.recOriginal?`<div class="row" style="background:#fff4d9;padding:1.5mm"><span>Receita:</span><b style="color:#8a6000">APRESENTAR ORIGINAL</b></div>`:''}
-  ${doc.pim?`<div class="row" style="background:#f3e8ff;padding:1.5mm"><span>&#128203; PIM:</span><b style="color:#6a0dad">ENTREGAR PROTOCOLO</b></div>`:''}
   <hr>
   <div class="stamp">ENTREGUE</div>
   <div class="sig-label">Data de Entrega:</div>
@@ -660,7 +676,6 @@ async function printPaymentReceipt(doc) {
     + (doc.domicilio ? '<div class="row" style="background:#e8f5ed;padding:1.5mm"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>' : '')
     + (doc.nome ? '<div class="row"><span>Cliente:</span><b>' + doc.nome + '</b></div>' : '')
     + (doc.recOriginal ? '<div class="row" style="background:#fff4d9;padding:1.5mm"><span>Receita:</span><b style="color:#8a6000">APRESENTAR ORIGINAL</b></div>' : '')
-    + (doc.pim ? '<div class="row" style="background:#f3e8ff;padding:1.5mm"><span>&#128203; PIM:</span><b style="color:#6a0dad">ENTREGAR PROTOCOLO</b></div>' : '')
     + '<hr>'
     + '<div class="stamp">PAGO</div>'
     + '</div>'
@@ -692,7 +707,6 @@ function buildSlipHTML(doc, label, bcPNG){
   <div class="row"><span>Tipo:</span><b>${doc.ptype}</b></div>
   ${doc.domicilio?`<div class="row" style="background:#e8f5ed;padding:1.5mm;border-radius:3px"><span>&#127968; Entrega:</span><b style="color:#116b30">DOMICILIO</b></div>`:''}
   ${doc.recOriginal?`<div class="row" style="background:#fff4d9;padding:1.5mm;border-radius:3px"><span>Receita:</span><b style="color:#8a6000">APRESENTAR ORIGINAL</b></div>`:''}
-  ${doc.pim?`<div class="row" style="background:#f3e8ff;padding:1.5mm;border-radius:3px"><span>&#128203; PIM:</span><b style="color:#6a0dad">ENTREGAR PROTOCOLO</b></div>`:''}
   ${locsNote}
   <hr>
   <div class="pago-section">
