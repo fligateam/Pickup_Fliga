@@ -266,6 +266,7 @@
           <option value="PSI">Psicotropicos</option>
           <option value="PIM">PIM (Preparacao Individual da Medicacao)</option>
           <option value="FR_PSI">Frio + Psicotropicos</option>
+          <option value="AMB_PSI">Temperatura Ambiente + Psicotropicos</option>
           <option value="AMB_FR">Temperatura Ambiente + Frio</option>
           <option value="AMB_FR_PSI">Temperatura Ambiente + Frio + Psicotropicos</option>
           <option value="PIM_FR">PIM + Frio</option>
@@ -285,7 +286,7 @@
           <label for="c_rec_original">Obrigatorio apresentar Receita Medica original</label>
         </div>
         <label style="margin-top:12px">Nome do Cliente <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(opcional)</span></label>
-        <input id="c_nome" type="text" placeholder="Nome do cliente (opcional)" autocomplete="off">
+        <input id="c_nome" type="text" placeholder="Nome do cliente/Observ. (opcional)" autocomplete="off">
         <div class="split">
           <button class="btn btn-primary" id="btnCreate">Criar Pick-up</button>
         </div>
@@ -563,6 +564,7 @@ function getReceiptTypes(ptype){
     case 'PSI':        return ['Psicotropicos','Psicotropicos - Duplicado'];
     case 'PIM':        return ['PIM - Preparacao Individual da Medicacao','PIM - Duplicado'];
     case 'FR_PSI':     return ['Frio','Psicotropicos','Frio + Psicotropicos - Duplicado'];
+    case 'AMB_PSI':    return ['Temperatura Ambiente','Psicotropicos','Temperatura Ambiente + Psicotropicos - Duplicado'];
     case 'AMB_FR':     return ['Temperatura Ambiente','Frio (Guardar em Frigorifico)','Temperatura Ambiente + Frio - Duplicado'];
     case 'AMB_FR_PSI': return ['Temperatura Ambiente','Frio (Guardar em Frigorifico)','Psicotropicos','Temperatura Ambiente + Frio + Psicotropicos - Duplicado'];
     case 'PIM_FR':     return ['PIM - Preparacao Individual da Medicacao','Frio (Guardar em Frigorifico)','PIM + Frio - Duplicado'];
