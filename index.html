@@ -286,7 +286,7 @@
           <label for="c_rec_original">Obrigatorio apresentar Receita Medica original</label>
         </div>
         <label style="margin-top:12px">Nome do Cliente <span style="font-size:10px;color:var(--muted);text-transform:none;font-weight:500">(opcional)</span></label>
-        <input id="c_nome" type="text" placeholder="Nome do cliente/Observ. (opcional)" autocomplete="off">
+        <input id="c_nome" type="text" placeholder="Nome do cliente (opcional)" autocomplete="off">
         <div class="split">
           <button class="btn btn-primary" id="btnCreate">Criar Pick-up</button>
         </div>
@@ -843,11 +843,38 @@ async function confirmPurge(){
 
 // ── Load ───────────────────────────────────────────────────
 async function loadAll(){
+  await loadPending();
+  await loadLastDelivered();
+  if(gestaoUnlocked) await loadGestao();
+}
+
+// Apenas pendentes — query leve, usada no auto-refresh
+async function loadPending(){
+  const snap=await PICKUPS
+    .where('delivered','==',false)
+    .where('canceled','==',false)
+    .orderBy('createdAt','desc')
+    .get();
+  const items=snap.docs.map(d=>({...d.data(),_id:d.id}));
+  renderPending(items);
+}
+
+// Últimos 20 entregues — query leve com limit
+async function loadLastDelivered(){
+  const snap=await PICKUPS
+    .where('delivered','==',true)
+    .orderBy('createdAt','desc')
+    .limit(20)
+    .get();
+  const del=snap.docs.map(d=>({...d.data(),_id:d.id}));
+  renderLastDelivered(del);
+}
+
+// Gestão — carrega tudo, apenas quando necessário (manual)
+async function loadGestao(){
   const snap=await PICKUPS.orderBy('createdAt','desc').get();
   const all=snap.docs.map(d=>({...d.data(),_id:d.id}));
-  renderPending(all);
-  renderLastDelivered(all);
-  if(gestaoUnlocked)renderGestao(all);
+  renderGestao(all);
 }
 
 function isUrgentRx(x){
@@ -855,7 +882,7 @@ function isUrgentRx(x){
 }
 
 function renderPending(all){
-  const items=all.filter(x=>!x.delivered&&!x.canceled);
+  const items=all; // já filtrado server-side
   const el=document.getElementById('pendingList');
   if(!items.length){
     el.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Sem pick-ups pendentes.</div>';
@@ -886,7 +913,7 @@ function renderPending(all){
 }
 
 function renderLastDelivered(all){
-  const del=all.filter(x=>x.delivered).slice(0,20);
+  const del=all; // já filtrado e limitado server-side
   const el=document.getElementById('lastDelivered');
   if(!del.length){
     el.innerHTML='<div style="color:var(--muted);font-size:13px">Sem entregues.</div>';
@@ -1008,10 +1035,11 @@ function checkLock(){
   }else{document.getElementById('lockErr').style.display='block';}
 }
 function closeLock(){document.getElementById('lockOverlay').style.display='none';document.getElementById('lockInput').value='';document.getElementById('lockErr').style.display='none';}
-document.getElementById('btnFilter').onclick=loadAll;
+document.getElementById('btnFilter').onclick=loadGestao;
 
 // ── RX alert check every minute ───────────────────────────
-setInterval(loadAll,60000);
+// Auto-refresh otimizado: só pendentes, a cada 5 minutos
+setInterval(loadPending, 300000);
 loadAll();
 </script>
 </body>
